@@ -2,8 +2,20 @@ Play-Json extensions
 ==========================
 ### Serialize case classes > 22 fields
 
+#### Create explicit formatter
     import org.cvogt.play.json.Jsonx
-    
+    implicit def jsonFormat = Jsonx.formatCaseClass[Foo]
+
+#### or import implicit default formatter
+    import org.cvogt.play.json.implicits.formatCaseClass
+
+#### or use implicit default as fallback
+    object formatters extends org.cvogt.play.json.ImplicitCaseClassFormatDefault{
+      // <- more specific formatters here, that take priority over default
+    }
+    import formatters._
+
+#### Then use ordinary play-json
     case class Foo(
       _1:Int,_2:Int,_3:Int,_4:Int,_5:Int,
       _21:Int,_22:Int,_23:Int,_24:Int,_25:Int,
@@ -14,7 +26,5 @@ Play-Json extensions
 
     val foo = Foo(1,2,3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5)
     
-    implicit def jsonFormatter = Jsonx.formatCaseClass[Foo]
     val json = Json.toJson( foo )
-    
     assert(foo == json.as[Foo])
