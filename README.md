@@ -3,7 +3,7 @@ Play-Json extensions
 
 ### Sbt
 
-    libraryDependencies += "org.cvogt" %% "play-json-extensions" % "0.1"
+    libraryDependencies += "org.cvogt" %% "play-json-extensions" % "0.2"
 
 ### Serialize case classes of arbitrary size (23+ fields allowed)
 

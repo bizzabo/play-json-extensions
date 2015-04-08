@@ -30,12 +30,12 @@ private[json] class Macros(val c: Context){
       case (k,_) => q""" ${Constant(k)} -> Json.toJson(obj.${TermName(k)}) """
     }
 
+    val pkg = q"_root_.play.api.libs.json"
     q"""
       {
-        import _root_.play.api.libs.json._      
         new Format[$T]{ 
-          def reads(json: JsValue) = JsSuccess(new $T(..$fields))
-          def writes(obj: $T) = JsObject(Seq(..$jsonFields))
+          def reads(json: $pkg.JsValue) = $pkg.JsSuccess(new $T(..$fields))
+          def writes(obj: $T) = $pkg.JsObject(Seq(..$jsonFields).filterNot(_._2 == $pkg.JsNull))
         }
       }
       """
