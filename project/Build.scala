@@ -22,7 +22,7 @@ object MyBuild extends Build{
       //scalacOptions ++= Seq("-Xprint:patmat", "-Xshow-phases"),
       testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oFD"),
       parallelExecution := false, // <- until TMap thread-safety issues are resolved
-      version := "0.2",
+      version := "0.2.1-SNAPSHOT",
       organizationName := "Jan Christopher Vogt",
       organization := "org.cvogt",
       scalacOptions in (Compile, doc) <++= (version,sourceDirectory in Compile,name).map((v,src,n) => Seq(

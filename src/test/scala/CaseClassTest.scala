@@ -5,7 +5,21 @@ import org.scalatest.FunSuite
 import play.api.libs.json._
 import org.joda.time._
 
-import org.cvogt.play.json.Jsonx
+import org.cvogt.play.json._
+
+object Adt{
+  sealed trait SomeAdt
+  case object ChoiceA extends SomeAdt
+  case object ChoiceB extends SomeAdt
+  final case class X(i: Int, s: String) extends SomeAdt
+  object X{
+    implicit def jsonFormat = Jsonx.formatCaseClass[X]
+  }
+  final case class Y(i: Int, s: String) extends SomeAdt
+  object Y{
+    implicit def jsonFormat = Jsonx.formatCaseClass[Y]
+  }
+}
 
 class CaseClassTest extends FunSuite{
   test("de/serialize case class > 22"){
@@ -51,5 +65,23 @@ class CaseClassTest extends FunSuite{
       Set("b"->JsString("foo"), "d"->JsString("foo"))
       === json.as[JsObject].fields.toSet
     )
+  }
+  test("serialize Adt"){
+    import Adt._
+    implicit val jsonFormat = Jsonx.formatAdt[SomeAdt](AdtEncoder.TypeAsField)
+    val a: SomeAdt = ChoiceA
+    val b: SomeAdt = ChoiceB
+    val x = X(99,"Chris")
+    val y = Y(99,"Chris")
+    assert("ChoiceA" === Json.toJson(ChoiceA).as[JsString].value)
+    assert("ChoiceB" === Json.toJson(ChoiceB).as[JsString].value)
+    assert("ChoiceA" === Json.toJson(a).as[JsString].value)
+    assert("ChoiceB" === Json.toJson(b).as[JsString].value)
+
+    assert(x !== y)
+    assert(JsSuccess(ChoiceA) === Json.fromJson[SomeAdt](Json.toJson(ChoiceA)))
+    assert(JsSuccess(ChoiceB) === Json.fromJson[SomeAdt](Json.toJson(ChoiceB)))
+    assert(JsSuccess(x) === Json.fromJson[SomeAdt](Json.toJson(x)))
+    assert(JsSuccess(y) === Json.fromJson[SomeAdt](Json.toJson(y)))
   }
 }
