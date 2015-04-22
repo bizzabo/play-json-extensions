@@ -84,4 +84,22 @@ class CaseClassTest extends FunSuite{
     assert(JsSuccess(x) === Json.fromJson[SomeAdt](Json.toJson(x)))
     assert(JsSuccess(y) === Json.fromJson[SomeAdt](Json.toJson(y)))
   }
+  test("deserialize error messages"){
+    val json = Json.parse("""{"i":"test"}""")
+    val res = Json.fromJson[Adt.X](json)
+    res match {
+      case JsError(_errors) =>
+        val errors = _errors.map{case (k,v) => (k.toString,v)}.toMap
+        assert(
+          2 === _errors.size
+        )
+        assert(
+          "error.expected.jsnumber" === errors("/i").head.message
+        )
+        assert(
+          "error.path.missing" === errors("/s").head.message
+        )
+      case _ => assert(false)
+    }
+  }
 }

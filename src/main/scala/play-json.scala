@@ -60,7 +60,7 @@ private[json] class Macros(val c: blackbox.Context){
     ).toSeq
   }
 
-  private def caseClassFieldsTypes(tpe: Type): Map[String, Type] = {
+  private def caseClassFieldsTypes(tpe: Type): ListMap[String, Type] = {
     val params = tpe.decls.collectFirst {
       case m: MethodSymbol if m.isPrimaryConstructor => m
     }.get.paramLists.head
@@ -75,18 +75,38 @@ private[json] class Macros(val c: blackbox.Context){
     val T = c.weakTypeOf[T]
     if(!isCaseClass(T))
       c.error(c.enclosingPosition, s"not a case class: $T")
-    val fields = caseClassFieldsTypes(T).map{
-      case (k,t) => q"""(json \ $k).as[$t]"""
-    }
+    val (results,mkResults) = caseClassFieldsTypes(T).map{
+      case (k,t) =>
+        val name = TermName(c.freshName)
+        (name, q"""val $name: JsResult[$t] = {
+            val path = (JsPath() \ $k)
+            val resolved = path.asSingleJsResult(json)
+            val result = (json \ $k).validate[$t].repath(path)
+            (resolved,result) match {
+              case (_,result:JsSuccess[_]) => result
+              case _ => resolved.flatMap(_ => result)
+            }
+          }
+          """)
+    }.unzip
     val jsonFields = caseClassFieldsTypes(T).map{
       case (k,_) => q"""${Constant(k)} -> Json.toJson(obj.${TermName(k)})"""
     }
 
     q"""
       {
+        import $pjson._
         new Format[$T]{ 
-          def reads(json: $pjson.JsValue) = $pjson.JsSuccess(new $T(..$fields))
-          def writes(obj: $T) = $pjson.JsObject(Seq(..$jsonFields).filterNot(_._2 == $pjson.JsNull))
+          def reads(json: JsValue) = {
+            ..$mkResults
+            val errors = Seq[JsResult[_]](..$results).collect{
+              case JsError(values) => values
+            }.flatten
+            if(errors.isEmpty){
+              JsSuccess(new $T(..${results.map(r => q"$r.get")}))
+            } else JsError(errors)
+          }
+          def writes(obj: $T) = JsObject(Seq(..$jsonFields).filterNot(_._2 == JsNull))
         }
       }
       """
