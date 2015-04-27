@@ -34,3 +34,10 @@ Play-Json extensions
 #### Then use ordinary play-json
     val json = Json.toJson( foo )
     assert(foo == json.as[Foo])
+
+
+#### Serialize tuples
+    import org.cvogt.play.json.tuples._
+    val json = Json.parse("""[1,1.0,"Test"]""")
+    val res = Json.fromJson[(Int,Double,String)](json)
+    assert(JsSuccess((1,1.0,"Test")) === res)

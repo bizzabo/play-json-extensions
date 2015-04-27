@@ -6,6 +6,7 @@ import play.api.libs.json._
 import org.joda.time._
 
 import org.cvogt.play.json._
+import org.cvogt.play.json.tuples._
 
 object Adt{
   sealed trait SomeAdt
@@ -21,7 +22,7 @@ object Adt{
   }
 }
 
-class CaseClassTest extends FunSuite{
+class PlayJsonExtensionsTest extends FunSuite{
   test("de/serialize case class > 22"){
     case class Bar(a: Int, b:Float)
     case class Foo(_1:Bar,_2:String,_3:Int,_4:Int,_5:Int,_21:Int,_22:Int,_23:Int,_24:Int,_25:Int,_31:Int,_32:Int,_33:Int,_34:Int,_35:Int,_41:Int,_42:Int,_43:Int,_44:Int,_45:Int,_51:Int,_52:Int,_53:Int,_54:Int,_55:Int)
@@ -84,7 +85,7 @@ class CaseClassTest extends FunSuite{
     assert(JsSuccess(x) === Json.fromJson[SomeAdt](Json.toJson(x)))
     assert(JsSuccess(y) === Json.fromJson[SomeAdt](Json.toJson(y)))
   }
-  test("deserialize error messages"){
+  test("deserialize case class error messages"){
     val json = Json.parse("""{"i":"test"}""")
     val res = Json.fromJson[Adt.X](json)
     res match {
@@ -98,6 +99,26 @@ class CaseClassTest extends FunSuite{
         )
         assert(
           "error.path.missing" === errors("/s").head.message
+        )
+      case _ => assert(false)
+    }
+  }
+  test("deserialize tuple"){
+    val json = Json.parse("""[1,1.0,"Test"]""")
+    val res = Json.fromJson[(Int,Double,String)](json)
+    assert(JsSuccess((1,1.0,"Test")) === res)
+    assert(JsSuccess((1,1.0,"Test")) === Json.toJson(res.get).validate[(Int,Double,String)])
+  }
+  test("deserialize tuple wrong size"){
+    case class Foo(bar: (Int,Double,String))
+    implicit def jsonFoo = Jsonx.formatCaseClass[Foo]
+    val json = Json.parse("""{"bar": [1,1.0]}""")
+    val res = Json.fromJson[Foo](json)
+    res match {
+      case JsError(_errors) =>
+        val errors = _errors.map{case (k,v) => (k.toString,v)}.toMap
+        assert(
+          "Expected array of size 3, found: [1,1.0]" === errors("/bar").head.message
         )
       case _ => assert(false)
     }
