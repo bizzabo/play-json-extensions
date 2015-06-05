@@ -127,8 +127,23 @@ private[json] class Macros(val c: blackbox.Context){
       }
     }
 
-    val subs = allSubs.filterNot(_.isAbstract)
+    val concreteSubs = allSubs.filterNot(_.isAbstract)
     
+    // hack to detect breakage of knownDirectSubclasses as suggested in 
+    // https://gitter.im/scala/scala/archives/2015/05/05 and
+    // https://gist.github.com/retronym/639080041e3fecf58ba9
+    val global = c.universe.asInstanceOf[scala.tools.nsc.Global]
+    def checkSubsPostTyper = if (allSubs != knownTransitiveSubclasses(T))
+      c.error(c.macroApplication.pos,
+s"""macro call formatAdt[$T] happend in a place, where typechecking of $T hasn't been completed yet.
+Completion is required in order to find all subclasses (using .knownDirectSubclasses transitively).
+Try moving the call into a separate file, a sibbling package, a separate sbt sub project or else.
+"""
+      )
+
+    val checkSubsPostTyperTypTree =
+      new global.TypeTreeWithDeferredRefCheck()(() => { checkSubsPostTyper ; global.TypeTree(global.NoType) }).asInstanceOf[TypTree]
+
     val isModuleJson = (sym: ClassSymbol) =>
       q"""
         (json: JsValue) => {
@@ -138,7 +153,7 @@ private[json] class Macros(val c: blackbox.Context){
         }
       """
 
-    val writes = subs.map{
+    val writes = concreteSubs.map{
       sym => if(sym.isModuleClass){
         cq"`${TermName(sym.name.decodedName.toString)}` => $encoder.encodeObject[$sym]"//
       } else {
@@ -152,7 +167,7 @@ private[json] class Macros(val c: blackbox.Context){
       }
     }
 
-    val (extractors, reads) = subs.map{
+    val (extractors, reads) = concreteSubs.map{
       sym =>
         val name = TermName(c.freshName)
         (
@@ -179,7 +194,8 @@ private[json] class Macros(val c: blackbox.Context){
     val t = q"""
       {
         ..$extractors
-        new Format[$T]{ 
+        new Format[$T]{
+          type T = $checkSubsPostTyperTypTree;
           def reads(json: $pjson.JsValue) = json match {case ..$reads}
           def writes(obj: $T) = obj match {case ..$writes}
         }
