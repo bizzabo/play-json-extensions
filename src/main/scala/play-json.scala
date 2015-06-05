@@ -175,14 +175,14 @@ Try moving the call into a separate file, a sibbling package, a separate sbt sub
             val extractor = if(sym.isModuleClass){
               q"""
                 (json: JsValue) =>
-                  ${isModuleJson(sym)}(json).map(_ => $pjson.JsSuccess(${sym.asClass.module}))
+                  ${isModuleJson(sym)}(json).map(_ => JsSuccess(${sym.asClass.module}))
               """
             } else {
               assert(sym.isCaseClass)
               q"""
                 (json: JsValue) =>
                   $encoder.extractClassJson[${sym}](json.as[JsObject])
-                          .map($pjson.Json.fromJson[$sym](_))
+                          .map(Json.fromJson[$sym](_))
               """
             }
             q"object $name extends $pkg.Extractor($extractor)"
@@ -193,10 +193,11 @@ Try moving the call into a separate file, a sibbling package, a separate sbt sub
     
     val t = q"""
       {
+        import $pjson._
         ..$extractors
         new Format[$T]{
           type T = $checkSubsPostTyperTypTree;
-          def reads(json: $pjson.JsValue) = json match {case ..$reads}
+          def reads(json: JsValue) = json match {case ..$reads}
           def writes(obj: $T) = obj match {case ..$writes}
         }
       }
