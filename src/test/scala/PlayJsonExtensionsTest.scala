@@ -123,4 +123,7 @@ class PlayJsonExtensionsTest extends FunSuite{
       case _ => assert(false)
     }
   }
+  test("asdf"){
+    Json.toJson[Highlight](new TimeStatement(""))
+  }
 }
