@@ -196,8 +196,18 @@ Try moving the call into a separate file, a sibbling package, a separate sbt sub
         ..$extractors
         new Format[$T]{
           type T = $checkSubsPostTyperTypTree;
-          def reads(json: JsValue) = json match {case ..$reads}
-          def writes(obj: $T) = obj match {case ..$writes}
+          def reads(json: JsValue) = {
+            json match {
+              case ..$reads
+              case _ => throw new Exception("formatAdt failed to read as type "+${Literal(Constant(T.toString))}+s": $${json.getClass}$$json")
+            }
+          }
+          def writes(obj: $T) = {
+            obj match {
+              case ..$writes
+              case _ => throw new Exception("formatAdt failed to write as type "+${Literal(Constant(T.toString))}+s": $${obj.getClass}$$obj")
+            }
+          }
         }
       }
       """
