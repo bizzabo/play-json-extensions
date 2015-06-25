@@ -1,6 +1,5 @@
 package org.cvogt.play.json
 
-import org.cvogt.scala.constraint.boolean.!
 import scala.reflect.macros.blackbox
 import play.api.libs.json._
 import collection.immutable.ListMap
@@ -211,7 +210,7 @@ Try moving the call into a separate file, a sibbling package, a separate sbt sub
 }
 trait ImplicitCaseClassFormatDefault{
   implicit def formatCaseClass[T]
-    (implicit ev: ![Format[T]])
+    (implicit ev: CaseClass[T])
     : Format[T] = macro Macros.formatCaseClass[T]
 }
 object implicits extends ImplicitCaseClassFormatDefault
@@ -220,12 +219,33 @@ class Extractor[T,R](f: T => Option[R]){
   def unapply(arg: T): Option[R] = f(arg)
 }
 
+/**
+Type class for case classes
+*/
+final class CaseClass[T]
+object CaseClass{
+  def checkCaseClassMacro[T:c.WeakTypeTag](c: blackbox.Context) = {
+    import c.universe._
+    val T = c.weakTypeOf[T]
+    assert(
+      T.typeSymbol.isClass && T.typeSymbol.asClass.isCaseClass
+    )
+    q"new CaseClass[$T]"
+  }
+  /**
+  fails compilation if T is not a case class
+  meaning this can be used as an implicit to check that a type is a case class
+  */
+  implicit def checkCaseClass[T]: CaseClass[T] = macro checkCaseClassMacro[T]
+}
+
 object Jsonx{
+
   /**
   Generates a PlayJson Format[T] for a case class T with any number of fields (>22 included)
   */
   def formatCaseClass[T]
-    (implicit ev: ![Format[T]])
+    (implicit ev: CaseClass[T])
     : Format[T]
     = macro Macros.formatCaseClass[T]
 

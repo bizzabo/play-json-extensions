@@ -11,7 +11,7 @@ object MyBuild extends Build{
       description := "Slick-style, cross-library, untyped mongo query builder for Scala",
       libraryDependencies ++=   Seq(
         "com.typesafe.play" %% "play-json" % "2.3.4",
-        "org.cvogt" %% "scala-extensions" % "0.2",
+       // "org.cvogt" %% "scala-extensions" % "0.2",
         "org.scala-lang" % "scala-compiler" % scalaVersion.value % "compile",
         "org.scalatest" %% "scalatest" % "2.2.4" % "test"
       ),
