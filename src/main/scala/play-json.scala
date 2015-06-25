@@ -3,9 +3,20 @@ package org.cvogt.play.json
 import scala.reflect.macros.blackbox
 import play.api.libs.json._
 import collection.immutable.ListMap
-
+import scala.annotation.implicitNotFound
 
 class OptionValidationDispatcher[T](val validate: JsLookupResult => JsResult[T]) extends AnyVal
+
+/** invariant Wrapper around play-json Writes to prevent ambiguity with ADT serialization */
+@implicitNotFound("""
+NOTE: formatAdt requires InvariantFormat instead of Format as explicit return type of child class formatters
+could not find implicit value of type org.cvogt.play.json.InvariantWrites[${T}]
+""")
+trait InvariantWrites[T] extends Writes[T]
+/** invariant Wrapper around play-json Reads to prevent ambiguity with ADT serialization */
+trait InvariantReads[T] extends Reads[T]
+/** invariant Wrapper around play-json Format to prevent ambiguity with ADT serialization */
+trait InvariantFormat[T] extends Format[T] with InvariantReads[T] with InvariantWrites[T]
 
 object `package`{
   implicit def nonOptionValidationDispatcher[T:Reads] = {
@@ -127,7 +138,8 @@ private[json] class Macros(val c: blackbox.Context){
     q"""
       {
         import $pjson._
-        new Format[$T]{ 
+        import $pkg._
+        new $pkg.InvariantFormat[$T]{ 
           def reads(json: JsValue) = {
             ..$mkResults
             val errors = Seq[JsResult[_]](..$results).collect{
@@ -191,7 +203,7 @@ Try moving the call into a separate file, a sibbling package, a separate sbt sub
         assert(sym.isCaseClass)
         cq"""obj: $sym => {
           $encoder.encodeClassType[$sym](
-            Json.toJson[$sym](obj)(implicitly[Writes[$sym]]).as[JsObject]
+            Json.toJson[$sym](obj)(implicitly[$pkg.InvariantWrites[$sym]]).as[JsObject]
           )
         }
         """
@@ -225,8 +237,9 @@ Try moving the call into a separate file, a sibbling package, a separate sbt sub
     val t = q"""
       {
         import $pjson._
+        import $pkg._
         ..$extractors
-        new Format[$T]{
+        new $pkg.InvariantFormat[$T]{
           type T = $checkSubsPostTyperTypTree;
           def reads(json: JsValue) = {
             json match {
@@ -253,7 +266,7 @@ Try moving the call into a separate file, a sibbling package, a separate sbt sub
 trait ImplicitCaseClassFormatDefault{
   implicit def formatCaseClass[T]
     (implicit ev: CaseClass[T])
-    : Format[T] = macro Macros.formatCaseClass[T]
+    : InvariantFormat[T] = macro Macros.formatCaseClass[T]
 }
 object ImplicitCaseClassFormatDefault extends ImplicitCaseClassFormatDefault
 
@@ -296,12 +309,12 @@ object Jsonx{
   */
   def formatCaseClass[T]
     (implicit ev: CaseClass[T])
-    : Format[T]
+    : InvariantFormat[T]
     = macro Macros.formatCaseClass[T]
 
   /**
   Generates a PlayJson Format[T] for a sealed trait that only has case object children
   */
-  def formatAdt[T](encoder: AdtEncoder): Format[T]
+  def formatAdt[T](encoder: AdtEncoder): InvariantFormat[T]
     = macro Macros.formatAdt[T]
 }

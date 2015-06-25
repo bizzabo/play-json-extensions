@@ -9,6 +9,16 @@ import org.cvogt.play.json._
 import org.cvogt.play.json.tuples._
 import implicits.optionWithNull
 
+final case class RecursiveClass(o: Option[RecursiveClass], s:String)
+object RecursiveClass{
+  implicit def jsonFormat: InvariantFormat[RecursiveClass] = Jsonx.formatCaseClass[RecursiveClass]   
+}
+sealed trait RecursiveAdt
+final case class RecursiveChild(o: Option[RecursiveAdt], s:String) extends RecursiveAdt
+object RecursiveFormat{
+  implicit def jsonFormat: Format[RecursiveAdt] = Jsonx.formatAdt[RecursiveAdt](AdtEncoder.TypeAsField)
+  implicit def jsonFormat2: InvariantFormat[RecursiveChild] = Jsonx.formatCaseClass[RecursiveChild]   
+}
 object Adt{
   sealed trait SomeAdt
   case object ChoiceA extends SomeAdt
@@ -122,6 +132,27 @@ class PlayJsonExtensionsTest extends FunSuite{
     assert(JsSuccess(y) === Json.fromJson[SomeAdt](Json.toJson[SomeAdt](y)))
     assert(JsSuccess(x) === Json.fromJson[SomeAdt](Json.toJson(x)))
     assert(JsSuccess(y) === Json.fromJson[SomeAdt](Json.toJson(y)))
+  }
+  test("serialize recursive class"){
+    import RecursiveFormat._
+    val x = RecursiveClass(Some(RecursiveClass(Some(RecursiveClass(None,"c")),"b")),"a")
+    val json = Json.toJson[RecursiveClass](x)(implicitly[Format[RecursiveClass]])
+    val res = Json.fromJson[RecursiveClass](json)(implicitly[Format[RecursiveClass]])
+    assert(JsSuccess(x) === res)
+  }
+  test("serialize recursive child"){
+    import RecursiveFormat._
+    val x = RecursiveChild(Some(RecursiveChild(Some(RecursiveChild(None,"c")),"b")),"a")
+    val json = Json.toJson[RecursiveChild](x)(implicitly[Format[RecursiveChild]])
+    val res = Json.fromJson[RecursiveChild](json)(implicitly[Format[RecursiveChild]])
+    assert(JsSuccess(x) === res)
+  }
+  test("serialize recursive Adt"){
+    import RecursiveFormat._
+    val x = RecursiveChild(Some(RecursiveChild(Some(RecursiveChild(None,"c")),"b")),"a")
+    val json = Json.toJson[RecursiveAdt](x)(implicitly[Format[RecursiveAdt]])
+    val res = Json.fromJson[RecursiveAdt](json)(implicitly[Format[RecursiveAdt]])
+    assert(JsSuccess(x) === res)
   }
   test("deserialize case class error messages"){
     val json = Json.parse("""{"i":"test"}""")
