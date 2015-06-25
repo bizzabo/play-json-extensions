@@ -89,7 +89,7 @@ private[json] class Macros(val c: blackbox.Context){
           """)
     }.unzip
     val jsonFields = caseClassFieldsTypes(T).map{
-      case (k,_) => q"""${Constant(k)} -> Json.toJson(obj.${TermName(k)})"""
+      case (k,t) => q"""${Constant(k)} -> Json.toJson[$t](obj.${TermName(k)})(implicitly[Writes[$t]])"""
     }
 
     q"""
@@ -159,7 +159,7 @@ Try moving the call into a separate file, a sibbling package, a separate sbt sub
         assert(sym.isCaseClass)
         cq"""obj: $sym => {
           $encoder.encodeClassType[$sym](
-            Json.toJson[$sym](obj).as[JsObject]
+            Json.toJson[$sym](obj)(implicitly[Writes[$sym]]).as[JsObject]
           )
         }
         """

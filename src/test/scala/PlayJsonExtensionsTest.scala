@@ -86,7 +86,7 @@ class PlayJsonExtensionsTest extends FunSuite{
     val json = Json.parse(Json.stringify( // <- otherwise c = JsString(null), not JsNull
       Json.toJson(bar)
     ))
-    assert(bar === json.as[Bar])
+    assert(JsSuccess(bar) === json.validate[Bar])
     assert(
       Set("b"->JsString("foo"), "d"->JsString("foo"))
       === json.as[JsObject].fields.toSet
