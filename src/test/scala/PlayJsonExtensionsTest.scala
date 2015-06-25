@@ -21,6 +21,17 @@ object Adt{
     implicit def jsonFormat = Jsonx.formatCaseClass[Y]
   }
 }
+object AdtWithEmptyLeafs{
+  sealed trait SomeAdt
+  final case class A() extends SomeAdt
+  object A{
+    implicit def jsonFormat = Jsonx.formatCaseClass[A]
+  }
+  final case class B() extends SomeAdt
+  object B{
+    implicit def jsonFormat = Jsonx.formatCaseClass[B]
+  }
+}
 
 class PlayJsonExtensionsTest extends FunSuite{
   test("de/serialize case class > 22"){
@@ -96,6 +107,18 @@ class PlayJsonExtensionsTest extends FunSuite{
     assert(x !== y)
     assert(JsSuccess(ChoiceA) === Json.fromJson[SomeAdt](Json.toJson(ChoiceA)))
     assert(JsSuccess(ChoiceB) === Json.fromJson[SomeAdt](Json.toJson(ChoiceB)))
+    assert(JsSuccess(x) === Json.fromJson[SomeAdt](Json.toJson[SomeAdt](x)))
+    assert(JsSuccess(y) === Json.fromJson[SomeAdt](Json.toJson[SomeAdt](y)))
+    assert(JsSuccess(x) === Json.fromJson[SomeAdt](Json.toJson(x)))
+    assert(JsSuccess(y) === Json.fromJson[SomeAdt](Json.toJson(y)))
+  }
+  test("serialize Adt with empty leafs"){
+    import AdtWithEmptyLeafs._
+    implicit val jsonFormat = Jsonx.formatAdt[SomeAdt](AdtEncoder.TypeAsField)
+    val x = A()
+    val y = B()
+    assert(JsSuccess(x) === Json.fromJson[SomeAdt](Json.toJson[SomeAdt](x)))
+    assert(JsSuccess(y) === Json.fromJson[SomeAdt](Json.toJson[SomeAdt](y)))
     assert(JsSuccess(x) === Json.fromJson[SomeAdt](Json.toJson(x)))
     assert(JsSuccess(y) === Json.fromJson[SomeAdt](Json.toJson(y)))
   }
