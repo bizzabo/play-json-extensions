@@ -149,13 +149,13 @@ class PlayJsonExtensionsTest extends FunSuite{
   test("deserialize tuple wrong size"){
     case class Foo(bar: (Int,Double,String))
     implicit def jsonFoo = Jsonx.formatCaseClass[Foo]
-    val json = Json.parse("""{"bar": [1,1.0]}""")
+    val json = Json.parse("""{"bar": [1,1.1]}""")
     val res = Json.fromJson[Foo](json)
     res match {
       case JsError(_errors) =>
         val errors = _errors.map{case (k,v) => (k.toString,v)}.toMap
         assert(
-          "Expected array of size 3, found: [1,1.0]" === errors("/bar").head.message
+          "Expected array of size 3, found: [1,1.1]" === errors("/bar").head.message
         )
       case _ => assert(false)
     }
