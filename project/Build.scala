@@ -10,7 +10,7 @@ object MyBuild extends Build{
       scalaVersion := "2.11.6",
       description := "Slick-style, cross-library, untyped mongo query builder for Scala",
       libraryDependencies ++=   Seq(
-        "com.typesafe.play" %% "play-json" % "2.3.4",
+        "com.typesafe.play" %% "play-json" % "2.4.1",
        // "org.cvogt" %% "scala-extensions" % "0.2",
         "org.scala-lang" % "scala-compiler" % scalaVersion.value % "compile",
         "org.scalatest" %% "scalatest" % "2.2.4" % "test"
@@ -23,7 +23,7 @@ object MyBuild extends Build{
       //scalacOptions ++= Seq("-Xprint:patmat", "-Xshow-phases"),
       testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oFD"),
       parallelExecution := false, // <- until TMap thread-safety issues are resolved
-      version := "0.2.2-SNAPSHOT",
+      version := "0.3.0-SNAPSHOT",
       organizationName := "Jan Christopher Vogt",
       organization := "org.cvogt",
       scalacOptions in (Compile, doc) <++= (version,sourceDirectory in Compile,name).map((v,src,n) => Seq(

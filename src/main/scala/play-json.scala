@@ -4,6 +4,40 @@ import scala.reflect.macros.blackbox
 import play.api.libs.json._
 import collection.immutable.ListMap
 
+
+class OptionValidationDispatcher[T](val validate: JsLookupResult => JsResult[T]) extends AnyVal
+
+object `package`{
+  implicit def nonOptionValidationDispatcher[T:Reads] = {
+    new OptionValidationDispatcher(_.validate[T])
+  }
+  implicit def optionValidationDispatcher[T](implicit reads: Reads[Option[T]]) = {
+    new OptionValidationDispatcher(_.validateOpt[T])
+  }
+  implicit class JsLookupResultExtensions(res: JsLookupResult){
+    /**
+    properly validate Option and non-Option fields alike
+    */
+    def validateAuto[T](implicit helper: OptionValidationDispatcher[T]): JsResult[T] = helper.validate(res)
+    /**
+    Backport of >2.4.1 validateOpt as an extension method
+    */
+    def validateOpt[T](implicit reads: Reads[Option[T]]): JsResult[Option[T]] = res match {
+      case JsUndefined() => JsSuccess(None.asInstanceOf[Option[T]])
+      case JsDefined(a) => reads.reads(a)
+    }
+  }
+  implicit class JsValueExtensions(res: JsValue){
+    /**
+    properly validate Option and non-Option fields alike
+    */
+    def validateAuto[T:OptionValidationDispatcher]: JsResult[T] = JsDefined(res).validateAuto[T]
+    /**
+    Backport of >2.4.1 validateOpt as an extension method
+    */
+    def validateOpt[T](implicit reads: Reads[Option[T]]): JsResult[Option[T]] = JsDefined(res).validateOpt[T]
+  }
+}
 sealed trait AdtEncoder
 object AdtEncoder{
   trait TypeTagAdtEncoder extends AdtEncoder{
@@ -23,9 +57,7 @@ object AdtEncoder{
   object TypeAsField extends ClassTagAdtEncoder{
     import scala.reflect._
     def extractClassJson[T: ClassTag](json: JsObject) = {
-      Some(json).filter(
-        _ \ "type" == JsString(classTag[T].runtimeClass.getSimpleName)
-      )
+      (json \ "type").toOption.collect{ case JsString(s) if s == classTag[T].runtimeClass.getSimpleName => json }
     }
 
     def encodeObject[T: ClassTag] = {
@@ -80,7 +112,7 @@ private[json] class Macros(val c: blackbox.Context){
         (name, q"""val $name: JsResult[$t] = {
             val path = (JsPath() \ $k)
             val resolved = path.asSingleJsResult(json)
-            val result = (json \ $k).validate[$t].repath(path)
+            val result = (json \ $k).validateAuto[$t].repath(path)
             (resolved,result) match {
               case (_,result:JsSuccess[_]) => result
               case _ => resolved.flatMap(_ => result)
@@ -181,7 +213,7 @@ Try moving the call into a separate file, a sibbling package, a separate sbt sub
               q"""
                 (json: JsValue) =>
                   $encoder.extractClassJson[${sym}](json.as[JsObject])
-                          .map(Json.fromJson[$sym](_))
+                          .map(_.validateAuto[$sym])
               """
             }
             q"object $name extends $pkg.Extractor($extractor)"
@@ -223,7 +255,15 @@ trait ImplicitCaseClassFormatDefault{
     (implicit ev: CaseClass[T])
     : Format[T] = macro Macros.formatCaseClass[T]
 }
-object implicits extends ImplicitCaseClassFormatDefault
+object ImplicitCaseClassFormatDefault extends ImplicitCaseClassFormatDefault
+
+object implicits{
+  /** very simple optional field Reads that maps "null" to None */
+  implicit def optionWithNull[T](implicit rds: Reads[T]): Reads[Option[T]] = Reads.optionWithNull[T]
+
+  /** Stupidly reads a field as an Option mapping any error (format or missing field) to None */
+  implicit def optionNoError[A](implicit reads: Reads[A]): Reads[Option[A]] = Reads.optionNoError[A]
+}
 
 class Extractor[T,R](f: T => Option[R]){
   def unapply(arg: T): Option[R] = f(arg)
