@@ -106,7 +106,7 @@ private[json] class Macros(val c: blackbox.Context){
               JsSuccess(new $T(..${results.map(r => q"$r.get")}))
             } else JsError(errors)
           }
-          def writes(obj: $T) = JsObject(Seq(..$jsonFields).filterNot(_._2 == JsNull))
+          def writes(obj: $T) = JsObject(Seq[(String,JsValue)](..$jsonFields).filterNot(_._2 == JsNull))
         }
       }
       """

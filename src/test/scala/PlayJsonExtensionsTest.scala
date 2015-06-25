@@ -32,6 +32,13 @@ class PlayJsonExtensionsTest extends FunSuite{
     val json = Json.toJson( foo )
     assert(foo === json.as[Foo])
   }
+  test("de/serialize empty case class"){
+    case class Bar()
+    implicit def fmt1 = Jsonx.formatCaseClass[Bar]
+    val bar = Bar()
+    val json = Json.toJson( bar )
+    assert(bar === json.as[Bar])
+  }
   test("magically de/serialize case class > 22"){
     import org.cvogt.play.json.implicits.formatCaseClass
     case class Bar(a: Int, b:Float)
