@@ -161,3 +161,42 @@ class PlayJsonExtensionsTest extends FunSuite{
     }
   }
 }
+
+object JsonTestClasses{
+  case class A(s: String)
+  object A{ implicit def jsonFormat = Jsonx.formatCaseClass[A] }
+  case class B(s: Option[String])
+  object B{ implicit def jsonFormat = Jsonx.formatCaseClass[B] }
+  case class C(i: Int, b: Option[B])
+  object C{ implicit def jsonFormat = Jsonx.formatCaseClass[C] }
+  case class A2(s: String)
+  object A2{ implicit def jsonFormat = Json.format[A2] }
+  case class B2(s: Option[String])
+  object B2{ implicit def jsonFormat = Json.format[B2] }
+  case class C2(i: Int, b: Option[B])
+  object C2{ implicit def jsonFormat = Json.format[C2] }
+}
+class JsonTests extends FunSuite{
+  test("json"){
+    assert(JsSuccess(None) === Json.fromJson[Option[String]](Json.parse("""5""")))
+    assert(JsSuccess(None) === Json.fromJson[Option[String]](Json.parse("""{}""")))
+
+    import JsonTestClasses._
+
+    assert(JsSuccess(B(None)) === Json.fromJson[B](Json.parse("""{"s": {}}""")))
+    assert(JsSuccess(A("foo")) === Json.fromJson[A](Json.parse("""{"s": "foo"}""")))
+    assert(JsSuccess(B(Some("foo"))) === Json.fromJson[B](Json.parse("""{"s": "foo"}""")))
+    assert(JsSuccess(B(None)) === Json.fromJson[B](Json.parse("""{"s": null}""")))
+    assert(JsSuccess(B(None)) === Json.fromJson[B](Json.parse("""{}""")))
+    assert(JsSuccess(B(None)) === Json.fromJson[B](Json.parse("""5""")))
+    assert(JsSuccess(B(None)) === Json.fromJson[B](Json.parse("""null""")))
+
+    assert(Json.fromJson[B2](Json.parse("""{"s": {}}""")).isInstanceOf[JsError])
+    assert(A2("foo") === Json.fromJson[A2](Json.parse("""{"s": "foo"}""")).get)
+    assert(B2(Some("foo")) === Json.fromJson[B2](Json.parse("""{"s": "foo"}""")).get)
+    assert(JsSuccess(B2(None)) === Json.fromJson[B2](Json.parse("""{"s": null}""")))
+    assert(JsSuccess(B2(None)) === Json.fromJson[B2](Json.parse("""{}""")))
+    assert(JsSuccess(B2(None)) === Json.fromJson[B2](Json.parse("""5""")))
+    assert(JsSuccess(B2(None)) === Json.fromJson[B2](Json.parse("""null""")))
+  }
+}
