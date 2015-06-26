@@ -240,7 +240,7 @@ object CaseClass{
     assert(
       T.typeSymbol.isClass && T.typeSymbol.asClass.isCaseClass
     )
-    q"new CaseClass[$T]"
+    q"new _root_.org.cvogt.play.json.CaseClass[$T]"
   }
   /**
   fails compilation if T is not a case class
