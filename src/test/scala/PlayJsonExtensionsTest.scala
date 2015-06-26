@@ -7,15 +7,16 @@ import org.joda.time._
 
 import org.cvogt.play.json._
 import org.cvogt.play.json.tuples._
-import implicits.optionWithNull
 
 final case class RecursiveClass(o: Option[RecursiveClass], s:String)
 object RecursiveClass{
+  import implicits.optionWithNull
   implicit def jsonFormat: InvariantFormat[RecursiveClass] = Jsonx.formatCaseClass[RecursiveClass]   
 }
 sealed trait RecursiveAdt
 final case class RecursiveChild(o: Option[RecursiveAdt], s:String) extends RecursiveAdt
 object RecursiveFormat{
+  import implicits.optionWithNull
   implicit def jsonFormat: Format[RecursiveAdt] = Jsonx.formatAdt[RecursiveAdt](AdtEncoder.TypeAsField)
   implicit def jsonFormat2: InvariantFormat[RecursiveChild] = Jsonx.formatCaseClass[RecursiveChild]   
 }
@@ -45,6 +46,7 @@ object AdtWithEmptyLeafs{
 }
 
 class PlayJsonExtensionsTest extends FunSuite{
+  import implicits.optionWithNull
   test("de/serialize case class > 22"){
     case class Bar(a: Int, b:Float)
     case class Foo(_1:Bar,_2:String,_3:Int,_4:Int,_5:Int,_21:Int,_22:Int,_23:Int,_24:Int,_25:Int,_31:Int,_32:Int,_33:Int,_34:Int,_35:Int,_41:Int,_42:Int,_43:Int,_44:Int,_45:Int,_51:Int,_52:Int,_53:Int,_54:Int,_55:Int)
@@ -194,7 +196,8 @@ class PlayJsonExtensionsTest extends FunSuite{
   }
 }
 
-object JsonTestClasses{
+abstract class JsonTestClasses{
+  implicit def option[A](implicit reads: Reads[A]): Reads[Option[A]]
   case class A(s: String)
   object A{ implicit def jsonFormat = Jsonx.formatCaseClass[A] }
   case class B(s: Option[String])
@@ -209,14 +212,40 @@ object JsonTestClasses{
   object C2{ implicit def jsonFormat = Json.format[C2] }
 }
 class JsonTests extends FunSuite{
-  test("json"){
-    /*
-    // used to work in play-json 2.3, now fails in 2.4
+  test("json optionWithNull"){
+    object JsonTestClasses extends JsonTestClasses{
+      implicit def option[A](implicit reads: Reads[A]): Reads[Option[A]] = implicits.optionWithNull[A]
+    }
+    import JsonTestClasses._
+
+    assert(Json.fromJson[Option[String]](Json.parse("""5""")).isInstanceOf[JsError])
+    assert(Json.fromJson[Option[String]](Json.parse("""{}""")).isInstanceOf[JsError])
+
+    assert(Json.fromJson[B](Json.parse("""{"s": {}}""")).isInstanceOf[JsError])
+    assert(JsSuccess(A("foo")) === Json.fromJson[A](Json.parse("""{"s": "foo"}""")))
+    assert(JsSuccess(B(Some("foo"))) === Json.fromJson[B](Json.parse("""{"s": "foo"}""")))
+    assert(JsSuccess(B(None)) === Json.fromJson[B](Json.parse("""{"s": null}""")))
+    assert(JsSuccess(B(None)) === Json.fromJson[B](Json.parse("""{}""")))
+    assert(JsSuccess(B(None)) === Json.fromJson[B](Json.parse("""5""")))
+    assert(JsSuccess(B(None)) === Json.fromJson[B](Json.parse("""null""")))
+
+    assert(Json.fromJson[B](Json.parse("""{"s": {}}""")).isInstanceOf[JsError])
+    assert(A2("foo") === Json.fromJson[A2](Json.parse("""{"s": "foo"}""")).get)
+    assert(B2(Some("foo")) === Json.fromJson[B2](Json.parse("""{"s": "foo"}""")).get)
+    assert(JsSuccess(B2(None)) === Json.fromJson[B2](Json.parse("""{"s": null}""")))
+    assert(JsSuccess(B2(None)) === Json.fromJson[B2](Json.parse("""{}""")))
+    assert(JsSuccess(B2(None)) === Json.fromJson[B2](Json.parse("""5""")))
+    assert(JsSuccess(B2(None)) === Json.fromJson[B2](Json.parse("""null""")))
+  }
+
+  test("json optionNoError"){
+    object JsonTestClasses extends JsonTestClasses{
+      implicit def option[A](implicit reads: Reads[A]): Reads[Option[A]] = implicits.optionNoError[A]
+    }
+    import JsonTestClasses._
+
     assert(JsSuccess(None) === Json.fromJson[Option[String]](Json.parse("""5""")))
     assert(JsSuccess(None) === Json.fromJson[Option[String]](Json.parse("""{}""")))
-    */
-
-    import JsonTestClasses._
 
     assert(JsSuccess(B(None)) === Json.fromJson[B](Json.parse("""{"s": {}}""")))
     assert(JsSuccess(A("foo")) === Json.fromJson[A](Json.parse("""{"s": "foo"}""")))
