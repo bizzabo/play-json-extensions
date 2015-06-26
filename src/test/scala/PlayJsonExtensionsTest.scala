@@ -218,6 +218,13 @@ class JsonTests extends FunSuite{
     }
     import JsonTestClasses._
 
+    assert((Json.parse("""{}""") \ "s").validate[Option[String]].isInstanceOf[JsError])
+    assert(JsSuccess(Some("foo")) === (Json.parse("""{"s": "foo"}""") \ "s").validate[Option[String]])
+    assert(JsSuccess(None) === (Json.parse("""{}""") \ "s").validateOpt[String])
+    assert(JsSuccess(Some("foo")) === (Json.parse("""{"s": "foo"}""") \ "s").validateOpt[String])
+    assert(JsSuccess(None) === (Json.parse("""{}""") \ "s").validateAuto[Option[String]])
+    assert(JsSuccess(Some("foo")) === (Json.parse("""{"s": "foo"}""") \ "s").validateAuto[Option[String]])
+
     assert(Json.fromJson[Option[String]](Json.parse("""5""")).isInstanceOf[JsError])
     assert(Json.fromJson[Option[String]](Json.parse("""{}""")).isInstanceOf[JsError])
 
@@ -243,6 +250,13 @@ class JsonTests extends FunSuite{
       implicit def option[A](implicit reads: Reads[A]): Reads[Option[A]] = implicits.optionNoError[A]
     }
     import JsonTestClasses._
+
+    assert((Json.parse("""{}""") \ "s").validate[Option[String]].isInstanceOf[JsError])
+    assert(JsSuccess(Some("foo")) === (Json.parse("""{"s": "foo"}""") \ "s").validate[Option[String]])
+    assert(JsSuccess(None) === (Json.parse("""{}""") \ "s").validateOpt[String])
+    assert(JsSuccess(Some("foo")) === (Json.parse("""{"s": "foo"}""") \ "s").validateOpt[String])
+    assert(JsSuccess(None) === (Json.parse("""{}""") \ "s").validateAuto[Option[String]])
+    assert(JsSuccess(Some("foo")) === (Json.parse("""{"s": "foo"}""") \ "s").validateAuto[Option[String]])
 
     assert(JsSuccess(None) === Json.fromJson[Option[String]](Json.parse("""5""")))
     assert(JsSuccess(None) === Json.fromJson[Option[String]](Json.parse("""{}""")))
