@@ -24,6 +24,10 @@ Play-Json extensions
     import org.cvogt.play.json.Jsonx
     implicit def jsonFormat = Jsonx.formatCaseClass[Foo]
 
+    // if your case class uses Option make sure you import
+    // one of the below implicit Option Reads to avoid
+    // "could not find implicit value for parameter helper: org.cvogt.play.json.OptionValidationDispatcher"
+
 #### Then use ordinary play-json
     val json = Json.toJson( foo )
     assert(foo == json.as[Foo])
@@ -36,10 +40,10 @@ Play-Json extensions
 
 ### Option for play-json 2.4
 
-#### implicit Reads
-    import org.cvogt.test.play.json.implicits.optionNoError // play 2.3 behavior
+#### implicit Option Reads
+    import org.cvogt.play.json.implicits.optionWithNull // play 2.4 suggested behavior
     // or
-    import org.cvogt.test.play.json.implicits.optionWithNull // play 2.4 suggested behavior
+    import org.cvogt.play.json.implicits.optionNoError // play 2.3 behavior
 
 #### automatic option validation: `validateAuto`
     val json = (Json.parse("""{}""") \ "s")
