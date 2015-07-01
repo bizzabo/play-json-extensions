@@ -146,7 +146,15 @@ private[json] class Macros(val c: blackbox.Context){
               case JsError(values) => values
             }.flatten
             if(errors.isEmpty){
-              JsSuccess(new $T(..${results.map(r => q"$r.get")}))
+              try{
+                JsSuccess(new $T(..${results.map(r => q"$r.get")}))
+              } catch {
+                case e: _root_.java.lang.IllegalArgumentException =>
+                  val sw = new _root_.java.io.StringWriter()
+                  val pw = new _root_.java.io.PrintWriter(sw)
+                  e.printStackTrace(pw)
+                  JsError(play.api.data.validation.ValidationError(sw.toString,e))
+              }
             } else JsError(errors)
           }
           def writes(obj: $T) = JsObject(Seq[(String,JsValue)](..$jsonFields).filterNot(_._2 == JsNull))

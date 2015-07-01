@@ -28,6 +28,9 @@ Play-Json extensions
     // one of the below implicit Option Reads to avoid
     // "could not find implicit value for parameter helper: org.cvogt.play.json.OptionValidationDispatcher"
 
+    // note: formatCaseClass catches IllegalArgumentException and turns them into JsError enclosing the stack trace as the message
+    // this allows using require(...) in class constructors and still get JsErrors out of serialization
+
 #### Then use ordinary play-json
     val json = Json.toJson( foo )
     assert(foo == json.as[Foo])

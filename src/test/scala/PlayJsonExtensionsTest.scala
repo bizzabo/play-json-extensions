@@ -105,6 +105,23 @@ class PlayJsonExtensionsTest extends FunSuite{
       === json.as[JsObject].fields.toSet
     )
   }
+  test("require to JsError"){
+    // note, using null for a Scala String doesn't work with play Json
+    case class Bar(a: Int){
+      require(a > 5, "a needs to be larger than 5")
+    }
+    case class Baz(bar: Bar)
+    implicit def fmt1 = Jsonx.formatCaseClass[Bar]
+    implicit def fmt2 = Jsonx.formatCaseClass[Baz]
+    assert(Baz(Bar(6)) === Json.parse("""{"bar":{"a":6}}""").validate[Baz].get)
+    val capturedFailedRequire = Json.parse("""{"bar":{"a":5}}""").validate[Baz]
+    assert(
+      capturedFailedRequire.asInstanceOf[JsError].errors.head._2.head.message contains "requirement failed: a needs to be larger than 5"
+    )
+    assert(
+      capturedFailedRequire.asInstanceOf[JsError].errors.head._1.toString === "/bar"
+    )
+  }
   test("serialize Adt"){
     import Adt._
     implicit val jsonFormat = Jsonx.formatAdt[SomeAdt](AdtEncoder.TypeAsField)
