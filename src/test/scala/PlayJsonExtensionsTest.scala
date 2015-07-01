@@ -227,6 +227,30 @@ abstract class JsonTestClasses{
   object B2{ implicit def jsonFormat = Json.format[B2] }
   case class C2(i: Int, b: Option[B2])
   object C2{ implicit def jsonFormat = Json.format[C2] }
+
+  case class Mandatory(s: List[String])
+  object Mandatory{ implicit def jsonFormat = Jsonx.formatCaseClass[Mandatory] }
+  case class Optional(o: Option[Mandatory])
+  object Optional{ implicit def jsonFormat = Jsonx.formatCaseClass[Optional] }
+
+  case class Mandatory2(s: List[String])
+  object Mandatory2{ implicit def jsonFormat = Jsonx.formatCaseClass[Mandatory2] }
+  case class Optional2(o: Option[Mandatory2])
+  object Optional2{ implicit def jsonFormat = Jsonx.formatCaseClass[Optional2] }
+
+  case class ListInner(string: String)
+  object ListInner{ implicit def jsonFormat = Jsonx.formatCaseClass[ListInner] }
+  case class ListOuter(inner: List[ListInner])
+  object ListOuter{ implicit def jsonFormat = Jsonx.formatCaseClass[ListOuter] }
+  case class ClassOuter(outer: List[ListOuter])
+  object ClassOuter{ implicit def jsonFormat = Jsonx.formatCaseClass[ClassOuter] }
+
+  case class ListInner2(string: String)
+  object ListInner2{ implicit def jsonFormat = Jsonx.formatCaseClass[ListInner2] }
+  case class ListOuter2(inner: List[ListInner2])
+  object ListOuter2{ implicit def jsonFormat = Jsonx.formatCaseClass[ListOuter2] }
+  case class ClassOuter2(outer: List[ListOuter2])
+  object ClassOuter2{ implicit def jsonFormat = Jsonx.formatCaseClass[ClassOuter2] }
 }
 class JsonTests extends FunSuite{
   test("json optionWithNull"){
@@ -260,6 +284,17 @@ class JsonTests extends FunSuite{
     assert(JsSuccess(B2(None)) === Json.fromJson[B2](Json.parse("""{}""")))
     assert(JsSuccess(B2(None)) === Json.fromJson[B2](Json.parse("""5""")))
     assert(JsSuccess(B2(None)) === Json.fromJson[B2](Json.parse("""null""")))
+
+    assert(JsSuccess(Optional(None)) === Json.fromJson[Optional](Json.parse("""{}""")))
+    assert(JsSuccess(Optional(Some(Mandatory(List("test"))))) === Json.fromJson[Optional](Json.parse("""{"o":{"s":["test"]}}""")))
+    assert(Json.parse("""{"o":{}}""").validate[Optional].isInstanceOf[JsError])
+
+    assert(JsSuccess(Optional2(None)) === Json.fromJson[Optional2](Json.parse("""{}""")))
+    assert(JsSuccess(Optional2(Some(Mandatory2(List("test"))))) === Json.fromJson[Optional2](Json.parse("""{"o":{"s":["test"]}}""")))
+    assert(Json.parse("""{"o":{}}""").validate[Optional2].isInstanceOf[JsError])
+
+    assert(JsSuccess(ClassOuter(Nil)) === Json.fromJson[ClassOuter](Json.parse("""{"outer": []}""")))
+    assert(JsSuccess(ClassOuter2(Nil)) === Json.fromJson[ClassOuter2](Json.parse("""{"outer": []}""")))
   }
 
   test("json optionNoError"){
@@ -293,5 +328,16 @@ class JsonTests extends FunSuite{
     assert(JsSuccess(B2(None)) === Json.fromJson[B2](Json.parse("""{}""")))
     assert(JsSuccess(B2(None)) === Json.fromJson[B2](Json.parse("""5""")))
     assert(JsSuccess(B2(None)) === Json.fromJson[B2](Json.parse("""null""")))
+
+    assert(JsSuccess(Optional(None)) === Json.fromJson[Optional](Json.parse("""{}""")))
+    assert(JsSuccess(Optional(Some(Mandatory(List("test"))))) === Json.fromJson[Optional](Json.parse("""{"o":{"s":["test"]}}""")))
+    assert(JsSuccess(Optional(None)) === Json.fromJson[Optional](Json.parse("""{"o":{}}""")))
+    
+    assert(JsSuccess(Optional2(None)) === Json.fromJson[Optional2](Json.parse("""{}""")))
+    assert(JsSuccess(Optional2(Some(Mandatory2(List("test"))))) === Json.fromJson[Optional2](Json.parse("""{"o":{"s":["test"]}}""")))
+    assert(JsSuccess(Optional2(None)) === Json.fromJson[Optional2](Json.parse("""{"o":{}}""")))
+
+    assert(JsSuccess(ClassOuter(Nil)) === Json.fromJson[ClassOuter](Json.parse("""{"outer": []}""")))
+    assert(JsSuccess(ClassOuter2(Nil)) === Json.fromJson[ClassOuter2](Json.parse("""{"outer": []}""")))
   }
 }
