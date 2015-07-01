@@ -5,7 +5,15 @@ import play.api.libs.json._
 import collection.immutable.ListMap
 import scala.annotation.implicitNotFound
 
-class OptionValidationDispatcher[T](val validate: JsLookupResult => JsResult[T]) extends AnyVal
+@implicitNotFound("""could not find implicit value for parameter helper: play.api.libs.json.Reads[${T}]
+TRIGGERED BY
+could not find implicit value for parameter helper: org.cvogt.play.json.OptionValidationDispatcher[${T}]
+TO SOLVE THIS
+import org.cvogt.play.json.implicits.optionWithNull // suggested
+or
+import org.cvogt.play.json.implicits.optionNoError // buggy play-json 2.3 behavior
+""")
+final class OptionValidationDispatcher[T] private[json] (val validate: JsLookupResult => JsResult[T]) extends AnyVal
 
 /** invariant Wrapper around play-json Writes to prevent ambiguity with ADT serialization */
 @implicitNotFound("""

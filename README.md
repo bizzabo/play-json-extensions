@@ -3,7 +3,7 @@ Play-Json extensions
 
 ### Sbt play-json >= 2.4
 
-    libraryDependencies += "org.cvogt" %% "play-json-extensions" % "0.3.0"
+    libraryDependencies += "org.cvogt" %% "play-json-extensions" % "0.3.1"
 
     // last version for play-json 2.3 was 0.2
 
