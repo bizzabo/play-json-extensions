@@ -225,7 +225,7 @@ abstract class JsonTestClasses{
   object A2{ implicit def jsonFormat = Json.format[A2] }
   case class B2(s: Option[String])
   object B2{ implicit def jsonFormat = Json.format[B2] }
-  case class C2(i: Int, b: Option[B])
+  case class C2(i: Int, b: Option[B2])
   object C2{ implicit def jsonFormat = Json.format[C2] }
 }
 class JsonTests extends FunSuite{
