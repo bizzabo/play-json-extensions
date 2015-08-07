@@ -114,14 +114,44 @@ private[json] class Macros(val c: blackbox.Context){
   }
 
   private def caseClassFieldsTypes(tpe: Type): ListMap[String, Type] = {
-    val params = tpe.decls.collectFirst {
-      case m: MethodSymbol if m.isPrimaryConstructor => m
-    }.get.paramLists.head
+    val paramLists = tpe.decls.collectFirst {
+      case m: MethodSymbol if m.isPrimaryConstructor =>
+        if(!m.isPublic)
+          c.error(c.enclosingPosition, s"Only classes with public primary constructor are supported. Found: $tpe")
+        m
+    }.get.paramLists
+    val params = paramLists.head
+
+    if(paramLists.size > 1)
+      c.error(c.enclosingPosition, s"Only one parameter list classes are supported. Found: $tpe")
+
+    params.foreach{
+      p => if(!p.isPublic)
+        c.error(c.enclosingPosition, s"Only classes with all public constructor arguments are supported. Found: $tpe")
+    }
 
     ListMap(params.map{ field =>
       ( field.name.toTermName.decodedName.toString,
         field.typeSignature)
     }: _*)
+  }
+
+  def formatInline[T: c.WeakTypeTag]: Tree = {
+    val T = c.weakTypeOf[T]
+    val fields = caseClassFieldsTypes(T)
+    if(fields.size != 1)
+      c.error(c.enclosingPosition, s"class with exactly one argument required, but found: $T")
+    val (field,tpe) = fields.head
+    q"""
+      {
+        import $pjson._
+        import $pkg._
+        new $pkg.InvariantFormat[$T]{
+          def reads(json: JsValue) = json.validate[$tpe].map(new $T(_))
+          def writes(obj: $T) = Json.toJson(obj.${TermName(field)})
+        }
+      }
+    """    
   }
 
   def formatCaseClass[T: c.WeakTypeTag](ev: Tree): Tree = {
@@ -330,6 +360,12 @@ object Jsonx{
     (implicit ev: CaseClass[T])
     : InvariantFormat[T]
     = macro Macros.formatCaseClass[T]
+
+  /**
+  Serialize one member classes such as value classes as their single contained value instead of a wrapping js object.
+  */
+  def formatInline[T]: Format[T]
+    = macro Macros.formatInline[T]
 
   /**
   Generates a PlayJson Format[T] for a sealed trait that only has case object children

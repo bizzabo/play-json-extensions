@@ -340,4 +340,18 @@ class JsonTests extends FunSuite{
     assert(JsSuccess(ClassOuter(Nil)) === Json.fromJson[ClassOuter](Json.parse("""{"outer": []}""")))
     assert(JsSuccess(ClassOuter2(Nil)) === Json.fromJson[ClassOuter2](Json.parse("""{"outer": []}""")))
   }
+
+  test("test formatInline"){
+    case class Foo(i: Int)
+    implicit def fmt = Jsonx.formatInline[Foo]
+    val f = Foo(1)
+    assert(JsSuccess(f) === Json.parse("1").validate[Foo])
+    assert(JsSuccess(f) === Json.toJson(f).validate[Foo])
+
+    implicit def fmt2 = Jsonx.formatInline[Bar]
+    val b = new Bar(1)
+    assert(JsSuccess(b) === Json.parse("1").validate[Bar])
+    assert(JsSuccess(b) === Json.toJson(b).validate[Bar])
+  }
 }
+class Bar(val i: Int) extends AnyVal
