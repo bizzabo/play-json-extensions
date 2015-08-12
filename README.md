@@ -3,11 +3,11 @@ Play-Json extensions
 
 ### Sbt play-json >= 2.4
 
-    libraryDependencies += "org.cvogt" %% "play-json-extensions" % "0.3.1"
+    libraryDependencies += "org.cvogt" %% "play-json-extensions" % "0.4.0"
 
     // last version for play-json 2.3 was 0.2
 
-### Serialize case classes of arbitrary size (23+ fields allowed)
+### De-/Serialize case classes of arbitrary size (23+ fields allowed)
 
     case class Foo(
       _1:Int,_2:Int,_3:Int,_4:Int,_5:Int,
@@ -35,11 +35,17 @@ Play-Json extensions
     val json = Json.toJson( foo )
     assert(foo == json.as[Foo])
 
-#### Serialize tuples
+#### De-/Serialize tuples
     import org.cvogt.play.json.tuples._
     val json = Json.parse("""[1,1.0,"Test"]""")
     val res = Json.fromJson[(Int,Double,String)](json)
     assert(JsSuccess((1,1.0,"Test")) === res)
+
+#### De-/Serialize single value classes
+    case class Foo(i: Int)
+    val json = Json.parse("1")
+    val res = Json.fromJson[Foo](json)
+    assert(JsSuccess(Foo(1)) === res)
 
 ### Option for play-json 2.4
 
@@ -58,26 +64,17 @@ Play-Json extensions
     
 ### experimental features (will change)
 
-#### automatic formatting of sealed traits of ADTs
+#### automatic formatting of sealed traits, delegating to formatters of the subclasses
+#### uses orElse of subclass Reads, careful in case of ambiguities of field-class correspondances
     sealed trait SomeAdt
     case object A extends SomeAdt
     final case class X(i: Int, s: String) extends SomeAdt
     object X{
-      implicit def jsonFormat: InvariantFormat = Jsonx.formatCaseClass[X]
+      implicit def jsonFormat: Format[X] = Jsonx.formatCaseClass[X]
     }
     object SomeAdt{
-      implicit def jsonFormat: InvariantFormat = Jsonx.formatAdt[SomeAdt](AdtEncoder.TypeAsField)
+      implicit def jsonFormat: Format[SomeAdt] = Jsonx.formatSealed[SomeAdt]( SingletonEncoder.simpleName )
     }
 
     Json.parse("""A""").as[SomeAdt] == A
     Json.parse("""{"i": 5, "s":"foo", "type": "X"}""").as[SomeAdt] == X(5,"foo")
-
-#### import implicit default formatter for case classes
-    import org.cvogt.play.json.implicits.formatCaseClass
-
-#### implicit default as fallback
-    object formatters extends org.cvogt.play.json.ImplicitCaseClassFormatDefault{
-      // <- more specific formatters here, that take priority over default
-    }
-    import formatters._
-

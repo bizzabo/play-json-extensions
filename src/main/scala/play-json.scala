@@ -60,8 +60,11 @@ object `package`{
     def validateOpt[T](implicit reads: Reads[Option[T]]): JsResult[Option[T]] = JsDefined(res).validateOpt[T]
   }
 }
+@deprecated("Not required anymore with formatSealed.","0.4.0")
 sealed trait AdtEncoder
+@deprecated("Not required anymore with formatSealed.","0.4.0")
 object AdtEncoder{
+  @deprecated("Not required anymore with formatSealed.","0.4.0")
   trait TypeTagAdtEncoder extends AdtEncoder{
     import scala.reflect.runtime.universe.TypeTag
     def extractClassJson[T: TypeTag](json: JsObject): Option[JsObject]
@@ -69,6 +72,7 @@ object AdtEncoder{
     def encodeClassType[T: TypeTag](json: JsObject): JsObject
   }
 
+  @deprecated("Not required anymore with formatSealed.","0.4.0")
   trait ClassTagAdtEncoder extends AdtEncoder{
     import scala.reflect.ClassTag
     def extractClassJson[T: ClassTag](json: JsObject): Option[JsObject]
@@ -76,6 +80,7 @@ object AdtEncoder{
     def encodeClassType[T: ClassTag](json: JsObject): JsObject
   }
 
+  @deprecated("Not required anymore with formatSealed.","0.4.0")
   object TypeAsField extends ClassTagAdtEncoder{
     import scala.reflect._
     def extractClassJson[T: ClassTag](json: JsObject) = {
@@ -113,13 +118,16 @@ private[json] class Macros(val c: blackbox.Context){
     ).toSeq
   }
 
-  private def caseClassFieldsTypes(tpe: Type): ListMap[String, Type] = {
-    val paramLists = tpe.decls.collectFirst {
+  private def primaryConstructor(tpe: Type): MethodSymbol = {
+    tpe.decls.collectFirst {
       case m: MethodSymbol if m.isPrimaryConstructor =>
         if(!m.isPublic)
           c.error(c.enclosingPosition, s"Only classes with public primary constructor are supported. Found: $tpe")
         m
-    }.get.paramLists
+    }.get
+  }
+  private def caseClassFieldsTypes(tpe: Type): ListMap[String, Type] = {
+    val paramLists = primaryConstructor(tpe).paramLists
     val params = paramLists.head
 
     if(paramLists.size > 1)
@@ -180,7 +188,7 @@ private[json] class Macros(val c: blackbox.Context){
       {
         import $pjson._
         import $pkg._
-        new $pkg.InvariantFormat[$T]{ 
+        new InvariantFormat[$T]{
           def reads(json: JsValue) = {
             ..$mkResults
             val errors = Seq[JsResult[_]](..$results).collect{
@@ -288,7 +296,7 @@ Try moving the call into a separate file, a sibbling package, a separate sbt sub
         import $pjson._
         import $pkg._
         ..$extractors
-        new $pkg.InvariantFormat[$T]{
+        new InvariantFormat[$T]{
           type T = $checkSubsPostTyperTypTree;
           def reads(json: JsValue) = {
             json match {
@@ -300,6 +308,81 @@ Try moving the call into a separate file, a sibbling package, a separate sbt sub
             obj match {
               case ..$writes
               case _ => throw new Exception("formatAdt failed to write as type "+${Literal(Constant(T.toString))}+s": $${obj.getClass}$$obj")
+            }
+          }
+        }
+      }
+      """
+    //println(t)
+    t
+  }
+
+  private def verifyKnownDirectSubclassesPostTyper[T: c.WeakTypeTag]( macroCall: String ) = {
+    val T = c.weakTypeOf[T].typeSymbol.asClass
+
+    val subs = T.knownDirectSubclasses
+    
+    // hack to detect breakage of knownDirectSubclasses as suggested in 
+    // https://gitter.im/scala/scala/archives/2015/05/05 and
+    // https://gist.github.com/retronym/639080041e3fecf58ba9
+    val global = c.universe.asInstanceOf[scala.tools.nsc.Global]
+    def checkSubsPostTyper = if (subs != T.knownDirectSubclasses)
+      c.error(c.macroApplication.pos,
+s"""macro call $macroCall happend in a place, where typechecking of $T hasn't been completed yet.
+Completion is required in order to find all direct subclasses.
+Try moving the call into a separate file, a sibbling package, a separate sbt sub project or else.
+"""
+      )
+
+    val checkSubsPostTyperTypTree =
+      new global.TypeTreeWithDeferredRefCheck()(() => { checkSubsPostTyper ; global.TypeTree(global.NoType) }).asInstanceOf[TypTree]
+  }
+
+  private def assertSealedAbstract[T: c.WeakTypeTag]{
+    val T = c.weakTypeOf[T].typeSymbol.asClass
+
+    if(!T.isSealed || !T.isAbstract ){
+      lazy val modifiers = T.toString.split(" ").dropRight(1).mkString
+      c.error(c.enclosingPosition, s"required sealed trait or sealed abstract class, found $modifiers: ${T.fullName}")
+    }    
+  }
+
+  def formatSealed[T: c.WeakTypeTag](encodeSingleton: Tree): Tree = {
+    assertSealedAbstract[T]
+
+    val T = c.weakTypeOf[T].typeSymbol.asClass
+    val (singletons, classes) = T.knownDirectSubclasses.toVector.partition(_.isModuleClass) // toVector for ordering
+    val singletonsWithNames = singletons.map{
+      s => s.fullName -> s
+    }
+    val writes = classes.map{
+      sym => cq"""obj: $sym => Json.toJson[$sym](obj)(implicitly[Format[$sym]]).as[JsObject]"""
+    } ++ singletonsWithNames.map{
+      case (name, sym) => 
+        cq"_: $sym => $encodeSingleton.apply(classOf[${sym}])"
+    }
+
+    val reads = (singletonsWithNames.map{
+      case (name, sym)=> q"""
+        if(json == $encodeSingleton.apply(classOf[${sym}]))
+          JsSuccess(${sym.asClass.module})
+        else JsError(s"not " + ${sym.fullName})
+      """
+    } ++ classes.map{
+      sym => q"""json.validateAuto[$sym]"""
+    }).reduce( (l,r) => q"$l orElse $r" )
+    
+    val t = q"""
+      {
+        import $pjson._
+        import $pkg._
+        new Format[$T]{
+          type VerifyKnownDirectSubclassesPostTyper = ${verifyKnownDirectSubclassesPostTyper[T](s"formatSealed[$T]")}
+          def reads(json: JsValue) = $reads
+          def writes(obj: $T) = {
+            obj match {
+              case ..$writes
+              case _ => throw new Exception("formatSealed found unexpected object of type "+${Literal(Constant(T.toString))}+s": $${obj.getClass}$$obj")
             }
           }
         }
@@ -327,6 +410,7 @@ object implicits{
   implicit def optionNoError[A](implicit reads: Reads[A]): Reads[Option[A]] = Reads.optionNoError[A]
 }
 
+@deprecated("Not required anymore with formatSealed.","0.4.0")
 class Extractor[T,R](f: T => Option[R]){
   def unapply(arg: T): Option[R] = f(arg)
 }
@@ -351,8 +435,26 @@ object CaseClass{
   implicit def checkCaseClass[T]: CaseClass[T] = macro checkCaseClassMacro[T]
 }
 
-object Jsonx{
+import scala.reflect.ClassTag
+final case class SingletonEncoder(apply: java.lang.Class[_] => JsValue)
+object SingletonEncoder{
+  import java.lang.Class
+  import scala.reflect.NameTransformer
+  def camel2underscore(str: String) = (
+    str.take(1)
+    ++
+    "[0-9A-Z]".r.replaceAllIn(
+      str.drop(1),
+      "_" + _.group(0).toLowerCase
+    )
+  )
+  def decodeName(name: String) = NameTransformer.decode(name.dropRight(1))
+  def simpleName = SingletonEncoder(cls => JsString(decodeName(cls.getSimpleName)))
+  def simpleNameLowerCase = SingletonEncoder(cls => JsString(camel2underscore(decodeName(cls.getSimpleName))))
+  def simpleNameUpperCase = SingletonEncoder(cls => JsString(camel2underscore(decodeName(cls.getSimpleName)).toUpperCase))
+}
 
+object Jsonx{
   /**
   Generates a PlayJson Format[T] for a case class T with any number of fields (>22 included)
   */
@@ -370,6 +472,17 @@ object Jsonx{
   /**
   Generates a PlayJson Format[T] for a sealed trait that only has case object children
   */
+  @deprecated("Use formatSealed instead. Also use Format instead of InvariantFormat. Be aware that formatSealed doesn't write type fields, ignores existing ones and uses orElse instead (which may break for ambiguities).","0.4.0")
   def formatAdt[T](encoder: AdtEncoder): InvariantFormat[T]
     = macro Macros.formatAdt[T]
+
+  /**
+  Generates a PlayJson Format[T] for a sealed trait that dispatches to Writes of it's concrete subclasses.
+  CAREFUL: It uses orElse for Reads in an unspecified order, which can produce wrong results
+  in case of ambiguities.
+  */
+  def formatSealed[T](
+    implicit encodeSingleton: SingletonEncoder
+  ): Format[T]
+    = macro Macros.formatSealed[T]
 }

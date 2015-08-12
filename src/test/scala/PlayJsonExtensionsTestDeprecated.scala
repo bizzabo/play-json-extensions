@@ -1,4 +1,4 @@
-package org.cvogt.test.play.json
+package org.cvogt.test.play.json._deprecated
 
 import org.scalatest.FunSuite
 
@@ -15,16 +15,16 @@ object RecursiveClass{
 }
 sealed trait RecursiveAdt
 final case class RecursiveChild(o: Option[RecursiveAdt], s:String) extends RecursiveAdt
+@deprecated("", "")
 object RecursiveFormat{
   import implicits.optionWithNull
-  implicit def jsonFormat: Format[RecursiveAdt] = Jsonx.formatSealed[RecursiveAdt](SingletonEncoder.simpleName)
+  implicit def jsonFormat: Format[RecursiveAdt] = Jsonx.formatAdt[RecursiveAdt](AdtEncoder.TypeAsField)
   implicit def jsonFormat2: InvariantFormat[RecursiveChild] = Jsonx.formatCaseClass[RecursiveChild]   
 }
 object Adt{
   sealed trait SomeAdt
   case object ChoiceA extends SomeAdt
   case object ChoiceB extends SomeAdt
-  case object `Choice.C` extends SomeAdt
   final case class X(i: Int, s: String) extends SomeAdt
   object X{
     implicit def jsonFormat = Jsonx.formatCaseClass[X]
@@ -46,7 +46,8 @@ object AdtWithEmptyLeafs{
   }
 }
 
-class PlayJsonExtensionsTest extends FunSuite{
+@deprecated("", "")
+class DeprecatedPlayJsonExtensionsTest extends FunSuite{
   import implicits.optionWithNull
   test("de/serialize case class > 22"){
     case class Bar(a: Int, b:Float)
@@ -125,42 +126,33 @@ class PlayJsonExtensionsTest extends FunSuite{
   }
   test("serialize Adt"){
     import Adt._
-    implicit val jsonFormat = Jsonx.formatSealed[SomeAdt](SingletonEncoder.simpleName)
+    implicit val jsonFormat = Jsonx.formatAdt[SomeAdt](AdtEncoder.TypeAsField)
     val a: SomeAdt = ChoiceA
     val b: SomeAdt = ChoiceB
-    val c: SomeAdt = `Choice.C`
     val x = X(99,"Chris")
     val y = Y(99,"Chris")
     assert("ChoiceA" === Json.toJson(ChoiceA).as[JsString].value)
     assert("ChoiceB" === Json.toJson(ChoiceB).as[JsString].value)
-    assert("Choice.C" === Json.toJson(`Choice.C`).as[JsString].value)
     assert("ChoiceA" === Json.toJson(a).as[JsString].value)
     assert("ChoiceB" === Json.toJson(b).as[JsString].value)
-    assert("Choice.C" === Json.toJson(c).as[JsString].value)
 
     assert(x !== y)
     assert(JsSuccess(ChoiceA) === Json.fromJson[SomeAdt](Json.toJson(ChoiceA)))
     assert(JsSuccess(ChoiceB) === Json.fromJson[SomeAdt](Json.toJson(ChoiceB)))
-    assert(JsSuccess(`Choice.C`) === Json.fromJson[SomeAdt](Json.toJson(`Choice.C`)))
-
-    /* disabling tests for ambiguity, not supported at the moment
     assert(JsSuccess(x) === Json.fromJson[SomeAdt](Json.toJson[SomeAdt](x)))
     assert(JsSuccess(y) === Json.fromJson[SomeAdt](Json.toJson[SomeAdt](y)))
     assert(JsSuccess(x) === Json.fromJson[SomeAdt](Json.toJson(x)))
     assert(JsSuccess(y) === Json.fromJson[SomeAdt](Json.toJson(y)))
-    */
   }
   test("serialize Adt with empty leafs"){
     import AdtWithEmptyLeafs._
-    implicit val jsonFormat = Jsonx.formatSealed[SomeAdt](SingletonEncoder.simpleName)
+    implicit val jsonFormat = Jsonx.formatAdt[SomeAdt](AdtEncoder.TypeAsField)
     val x = A()
     val y = B()
-    /* disabling tests for ambiguity, not supported at the moment
     assert(JsSuccess(x) === Json.fromJson[SomeAdt](Json.toJson[SomeAdt](x)))
     assert(JsSuccess(y) === Json.fromJson[SomeAdt](Json.toJson[SomeAdt](y)))
     assert(JsSuccess(x) === Json.fromJson[SomeAdt](Json.toJson(x)))
     assert(JsSuccess(y) === Json.fromJson[SomeAdt](Json.toJson(y)))
-    */
   }
   test("serialize recursive class"){
     import RecursiveFormat._
@@ -262,6 +254,7 @@ abstract class JsonTestClasses{
   case class ClassOuter2(outer: List[ListOuter2])
   object ClassOuter2{ implicit def jsonFormat = Jsonx.formatCaseClass[ClassOuter2] }
 }
+@deprecated("", "")
 class JsonTests extends FunSuite{
   test("json optionWithNull"){
     object JsonTestClasses extends JsonTestClasses{
@@ -350,18 +343,4 @@ class JsonTests extends FunSuite{
     assert(JsSuccess(ClassOuter(Nil)) === Json.fromJson[ClassOuter](Json.parse("""{"outer": []}""")))
     assert(JsSuccess(ClassOuter2(Nil)) === Json.fromJson[ClassOuter2](Json.parse("""{"outer": []}""")))
   }
-
-  test("test formatInline"){
-    case class Foo(i: Int)
-    implicit def fmt = Jsonx.formatInline[Foo]
-    val f = Foo(1)
-    assert(JsSuccess(f) === Json.parse("1").validate[Foo])
-    assert(JsSuccess(f) === Json.toJson(f).validate[Foo])
-
-    implicit def fmt2 = Jsonx.formatInline[Bar]
-    val b = new Bar(1)
-    assert(JsSuccess(b) === Json.parse("1").validate[Bar])
-    assert(JsSuccess(b) === Json.toJson(b).validate[Bar])
-  }
 }
-class Bar(val i: Int) extends AnyVal
