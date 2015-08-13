@@ -352,18 +352,16 @@ Try moving the call into a separate file, a sibbling package, a separate sbt sub
 
     val T = c.weakTypeOf[T].typeSymbol.asClass
     val (singletons, classes) = T.knownDirectSubclasses.toVector.partition(_.isModuleClass) // toVector for ordering
-    val singletonsWithNames = singletons.map{
-      s => s.fullName -> s
-    }
+    val singletonsWithNames = singletons
     val writes = classes.map{
       sym => cq"""obj: $sym => Json.toJson[$sym](obj)(implicitly[Format[$sym]]).as[JsObject]"""
-    } ++ singletonsWithNames.map{
-      case (name, sym) => 
+    } ++ singletons.map{
+      sym => 
         cq"_: $sym => $encodeSingleton.apply(classOf[${sym}])"
     }
 
-    val reads = (singletonsWithNames.map{
-      case (name, sym)=> q"""
+    val reads = (singletons.map{
+      sym => q"""
         if(json == $encodeSingleton.apply(classOf[${sym}]))
           JsSuccess(${sym.asClass.module})
         else JsError(s"not " + ${sym.fullName})
