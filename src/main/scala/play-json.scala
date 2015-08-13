@@ -1,9 +1,82 @@
 package org.cvogt.play.json
-
 import scala.reflect.macros.blackbox
 import play.api.libs.json._
 import collection.immutable.ListMap
 import scala.annotation.implicitNotFound
+
+package object internals{
+  /*
+  // this would allow implicitlyOption for primitives. move to scala-extensions
+  final case class FetchedFormat[T](format: Option[Format[T]])
+  object FetchedFormat{
+    implicit def fetch[T](implicit format: Format[T] = null): FetchedFormat[T] = FetchedFormat(Option(format))
+  }
+  def implicitlyOption[T](implicit ev: FetchedFormat[T]) = ev.format
+  */
+  /** does not work for primitive types */
+  def implicitlyOption[T](implicit ev: T = null): Option[T] = Option(ev)
+
+  /**
+  Type class for case classes
+  */
+  final class CaseClass[T]
+  object CaseClass{
+    def checkCaseClassMacro[T:c.WeakTypeTag](c: blackbox.Context) = {
+      import c.universe._
+      val T = c.weakTypeOf[T]
+      assert(
+        T.typeSymbol.isClass && T.typeSymbol.asClass.isCaseClass
+      )
+      q"new _root_.org.cvogt.play.json.internals.CaseClass[$T]"
+    }
+    /**
+    fails compilation if T is not a case class
+    meaning this can be used as an implicit to check
+    */
+    implicit def checkCaseClass[T]: CaseClass[T] = macro checkCaseClassMacro[T]
+  }
+
+  final class SingletonObject[T]
+  object SingletonObject{
+    def checkSingletonObjectMacro[T:c.WeakTypeTag](c: blackbox.Context) = {
+      import c.universe._
+      val T = c.weakTypeOf[T]
+      assert(
+        T.typeSymbol.isClass && T.typeSymbol.asClass.isModuleClass
+      )
+      q"new _root_.org.cvogt.play.json.internals.SingletonObject[$T]"
+    }
+    /**
+    fails compilation if T is not a singleton object class
+    meaning this can be used as an implicit to check
+    */
+    implicit def checkSingletonObject[T]: SingletonObject[T] = macro checkSingletonObjectMacro[T]
+  }
+
+  import scala.collection._
+  import scala.collection.generic.CanBuildFrom
+  private [json] implicit class TraversableLikeExtensions[A, Repr](val coll: TraversableLike[A, Repr]) extends AnyVal{
+    /** Eliminates duplicates based on the given equivalence function.
+    There is no guarantee which elements stay in case element two elements are considered equivalent.
+    this has runtime O(n^2)
+    @param symmetric comparison function which tests whether the two arguments are considered equivalent. */
+    def distinctWith[That](equivalent: (A,A) => Boolean)(implicit bf: CanBuildFrom[Repr, A, That]): That = {
+      var l = List[A]()
+      val b = bf(coll.repr)
+      for (elem <- coll) {
+        l.find{
+          case first => equivalent(elem,first)
+        }.getOrElse{
+          l = elem +: l
+          b += elem
+        }
+      }
+      b.result
+    }
+  }
+}
+
+import internals._
 
 @implicitNotFound("""could not find implicit value for parameter helper: play.api.libs.json.Reads[${T}]
 TRIGGERED BY: could not find implicit value for parameter helper: org.cvogt.play.json.OptionValidationDispatcher[${T}]
@@ -93,6 +166,60 @@ private[json] class Macros(val c: blackbox.Context){
       ( field.name.toTermName.decodedName.toString,
         field.typeSignature)
     }: _*)
+  }
+
+  def formatAuto[T: c.WeakTypeTag]/*(format: Tree)*/: Tree = {
+    val T = c.weakTypeOf[T]
+    import internals.TraversableLikeExtensions
+    def defaultFormatter =
+      if( isModuleClass(T) ){
+        q"""
+          implicit def simpleName = SingletonEncoder.simpleName
+          implicits.formatSingleton
+        """    
+      }else if( isCaseClass(T) && caseClassFieldsTypes(T).size == 1 ){
+        val ArgType = caseClassFieldsTypes(T).head._2
+        val name = TermName(c.freshName)
+        q"""
+        implicit def $name = Jsonx.formatAuto[$ArgType]
+        Jsonx.formatInline[$T]
+        """
+      }else if( isCaseClass(T) ){
+        val fieldFormatters = caseClassFieldsTypes(T).map{
+          case (_,t) => t
+        }.toVector.distinctWith(_ =:= _).map{ t =>
+            val name = TermName(c.freshName)
+            q"implicit def $name = Jsonx.formatAuto[$t]"
+        }
+        val t = q"""
+        ..$fieldFormatters
+        Jsonx.formatCaseClass[$T]
+        """
+        t
+      } else if( T.typeSymbol.isClass && T.typeSymbol.asClass.isSealed && T.typeSymbol.asClass.isAbstract ) {
+        val fieldFormatters = T.typeSymbol.asClass.knownDirectSubclasses.map{ t =>
+          val name = TermName(c.freshName)
+          q"implicit def $name = Jsonx.formatAuto[$t]"
+        }
+        q"""
+        ..$fieldFormatters
+        Jsonx.formatSealed[$T]
+        """
+      } else {
+        q"implicitly[Format[$T]]" // produces error message if no formatter defined
+      }
+
+    val t = q"""
+      {
+        import $pjson._
+        import $pkg._
+        internals.implicitlyOption[Format[$T]].getOrElse{
+          $defaultFormatter
+        }
+      }
+    """
+    //println(t)
+    t
   }
 
   def formatInline[T: c.WeakTypeTag]: Tree = {
@@ -253,13 +380,10 @@ Try moving the call into a separate file, a sibbling package, a separate sbt sub
 
   protected def isCaseClass(tpe: Type)
     = tpe.typeSymbol.isClass && tpe.typeSymbol.asClass.isCaseClass
+
+  protected def isModuleClass(tpe: Type)
+    = tpe.typeSymbol.isClass && tpe.typeSymbol.asClass.isModuleClass
 }
-trait ImplicitCaseClassFormatDefault{
-  implicit def formatCaseClass[T]
-    (implicit ev: CaseClass[T])
-    : Format[T] = macro Macros.formatCaseClass[T]
-}
-object ImplicitCaseClassFormatDefault extends ImplicitCaseClassFormatDefault
 
 object implicits{
   /** very simple optional field Reads that maps "null" to None */
@@ -273,44 +397,6 @@ object implicits{
     implicit encodeSingleton: SingletonEncoder, ev: SingletonObject[T]
   ): Format[T]
     = macro Macros.formatSingletonImplicit[T]
-}
-
-
-/**
-Type class for case classes
-*/
-final class CaseClass[T]
-object CaseClass{
-  def checkCaseClassMacro[T:c.WeakTypeTag](c: blackbox.Context) = {
-    import c.universe._
-    val T = c.weakTypeOf[T]
-    assert(
-      T.typeSymbol.isClass && T.typeSymbol.asClass.isCaseClass
-    )
-    q"new _root_.org.cvogt.play.json.CaseClass[$T]"
-  }
-  /**
-  fails compilation if T is not a case class
-  meaning this can be used as an implicit to check
-  */
-  implicit def checkCaseClass[T]: CaseClass[T] = macro checkCaseClassMacro[T]
-}
-
-final class SingletonObject[T]
-object SingletonObject{
-  def checkSingletonObjectMacro[T:c.WeakTypeTag](c: blackbox.Context) = {
-    import c.universe._
-    val T = c.weakTypeOf[T]
-    assert(
-      T.typeSymbol.isClass && T.typeSymbol.asClass.isModuleClass
-    )
-    q"new _root_.org.cvogt.play.json.SingletonObject[$T]"
-  }
-  /**
-  fails compilation if T is not a singleton object class
-  meaning this can be used as an implicit to check
-  */
-  implicit def checkSingletonObject[T]: SingletonObject[T] = macro checkSingletonObjectMacro[T]
 }
 
 import scala.reflect.ClassTag
@@ -360,7 +446,14 @@ object Jsonx{
     implicit encodeSingleton: SingletonEncoder
   ): Format[T]
     = macro Macros.formatSingleton[T]
-    implicit encodeSingleton: SingletonEncoder
-  ): Format[T]
-    = macro Macros.formatSealed[T]
+
+  /**
+  Fully automatic, recursive formatter generator.
+  Recognizes overridden formatters from companion objects or implicit scope
+  Does currently only for for case classes, sealed traits, objects and manually defined formatters.
+  Automatically, recursively delegates to formatCaseClass, formatSealed, formatInline, formatSingleton, implicitly[Format[...]]
+  Note: defaults to inline single-value case classes. Override if required.
+  */
+  def formatAuto[T]: Format[T]
+    = macro Macros.formatAuto[T]
 }

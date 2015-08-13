@@ -66,7 +66,7 @@ Play-Json extensions
 ### experimental features (will change)
 
 #### automatic formatting of sealed traits, delegating to formatters of the subclasses
-#### uses orElse of subclass Reads, careful in case of ambiguities of field-class correspondances
+#### formatSealed uses orElse of subclass Reads, careful in case of ambiguities of field-class correspondances
     sealed trait SomeAdt
     case object A extends SomeAdt
     final case class X(i: Int, s: String) extends SomeAdt
@@ -81,3 +81,24 @@ Play-Json extensions
 
     Json.parse("""A""").as[SomeAdt] == A
     Json.parse("""{"i": 5, "s":"foo", "type": "X"}""").as[SomeAdt] == X(5,"foo")
+
+#### Serialization nirvana - formatAuto FULLY automatic de-serializer
+
+    sealed trait SomeAdt
+    case object A extends SomeAdt
+    final case class X(i: Int, s: String) extends SomeAdt
+    object Baz
+    case class Bar(a: Int, b:Float, foo: Baz.type)
+    case class Foo(_1:Bar,_11:SomeAdt, _2:String,_3:Int,_4:Int,_5:Int,_21:Int,_22:Int,_23:Int,_24:Int,_25:Int,_31:Int,_32:Int,_33:Int,_34:Int,_35:Int,_41:Int,_42:Int,_43:Int,_44:Int,_45:Int,_51:Int,_52:Int,_53:Int,_54:Int,_55:Int)
+    val foo = Foo(Bar(5,1.0f, Baz),A,"sdf",3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5)
+    val foo2 = Foo(Bar(5,1.0f, Baz),X(5,"x"),"sdf",3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5)
+    
+    val fmt2: Format[Foo] = Jsonx.formatAuto[Foo] // not implicit to avoid infinite recursion
+
+    {
+      implicit def fmt3: Format[Foo] = fmt2    
+      val json = Json.toJson( foo )
+      assert(foo === json.as[Foo])
+      val json2 = Json.toJson( foo2 )
+      assert(foo2 === json2.as[Foo])
+    }

@@ -71,27 +71,6 @@ class PlayJsonExtensionsTest extends FunSuite{
     val json = Json.toJson( bar )
     assert(bar === json.as[Bar])
   }
-  test("magically de/serialize case class > 22"){
-    import org.cvogt.play.json.ImplicitCaseClassFormatDefault.formatCaseClass
-    case class Bar(a: Int, b:Float)
-    case class Foo(_1:Bar,_2:String,_3:Int,_4:Int,_5:Int,_21:Int,_22:Int,_23:Int,_24:Int,_25:Int,_31:Int,_32:Int,_33:Int,_34:Int,_35:Int,_41:Int,_42:Int,_43:Int,_44:Int,_45:Int,_51:Int,_52:Int,_53:Int,_54:Int,_55:Int)
-    val foo = Foo(Bar(5,1.0f),"sdf",3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5)
-    val json = Json.toJson( foo )
-    assert(foo === json.as[Foo])
-  }
-  case class Baz(a: Int)
-  case class Bar(a: Int)
-  test("magical implicit formatter default with overrides"){
-    object formatters extends org.cvogt.play.json.ImplicitCaseClassFormatDefault{
-      implicit def fmt = new Reads[Bar]{
-        def reads(json: JsValue) = JsSuccess(Bar(1))
-      }      
-    }
-    import formatters._
-    val json = Json.parse("""{"a": 2}""")
-    assert(Baz(2) === json.as[Baz])
-    assert(Bar(1) === json.as[Bar])
-  }
   test("serializing None skips fields"){
     // note, using null for a Scala String doesn't work with play Json
     case class Bar(a: Option[String], b: String, d: Option[String])
@@ -364,6 +343,37 @@ class JsonTests extends FunSuite{
     val b = new Bar(1)
     assert(JsSuccess(b) === Json.parse("1").validate[Bar])
     assert(JsSuccess(b) === Json.toJson(b).validate[Bar])
+  }
+  case class DontInline(a: Int)
+  object DontInline{
+    implicit def format = Jsonx.formatCaseClass[DontInline]
+  }
+  case class Inline(a: Int)
+  test("formatAuto"){
+    sealed trait SomeAdt
+    case object A extends SomeAdt
+    final case class X(i: Int, s: String) extends SomeAdt
+    object Baz
+    case class Bar(a: Int, b:Float, foo: Baz.type)
+    case class Foo(_1:Bar,_11:SomeAdt, _2:String,_3:Int,_4:Int,_5:Int,_21:Int,_22:Int,_23:Int,_24:Int,_25:Int,_31:Int,_32:Int,_33:Int,_34:Int,_35:Int,_41:Int,_42:Int,_43:Int,_44:Int,_45:Int,_51:Int,_52:Int,_53:Int,_54:Int,_55:Int)
+    val foo = Foo(Bar(5,1.0f, Baz),A,"sdf",3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5)
+    val foo2 = Foo(Bar(5,1.0f, Baz),X(5,"x"),"sdf",3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5)
+    
+    val fmt2: Format[Foo] = Jsonx.formatAuto[Foo] // not implicit to avoid infinite recursion
+
+    {
+      implicit def fmt3: Format[Foo] = fmt2    
+      val json = Json.toJson( foo )
+      assert(foo === json.as[Foo])
+      val json2 = Json.toJson( foo2 )
+      assert(foo2 === json2.as[Foo])
+    }
+
+    def fmt3: Format[DontInline] = Jsonx.formatAuto[DontInline]
+    def fmt4: Format[Inline] = Jsonx.formatAuto[Inline]
+    assert("5" ===  Json.toJson( Inline(5) )(fmt4).toString)
+    assert("""{"a":5}""" ===  Json.toJson( DontInline(5) )(fmt3).toString)
+
   }
 }
 class Bar(val i: Int) extends AnyVal
