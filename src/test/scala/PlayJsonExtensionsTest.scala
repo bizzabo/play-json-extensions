@@ -11,14 +11,14 @@ import org.cvogt.play.json.tuples._
 final case class RecursiveClass(o: Option[RecursiveClass], s:String)
 object RecursiveClass{
   import implicits.optionWithNull
-  implicit def jsonFormat: InvariantFormat[RecursiveClass] = Jsonx.formatCaseClass[RecursiveClass]   
+  implicit def jsonFormat: Format[RecursiveClass] = Jsonx.formatCaseClass[RecursiveClass]   
 }
 sealed trait RecursiveAdt
 final case class RecursiveChild(o: Option[RecursiveAdt], s:String) extends RecursiveAdt
 object RecursiveFormat{
   import implicits.optionWithNull
   implicit def jsonFormat: Format[RecursiveAdt] = Jsonx.formatSealed[RecursiveAdt]
-  implicit def jsonFormat2: InvariantFormat[RecursiveChild] = Jsonx.formatCaseClass[RecursiveChild]   
+  implicit def jsonFormat2: Format[RecursiveChild] = Jsonx.formatCaseClass[RecursiveChild]   
 }
 object Adt{
   sealed trait SomeAdt

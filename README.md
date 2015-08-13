@@ -3,8 +3,9 @@ Play-Json extensions
 
 ### Sbt play-json >= 2.4
 
-    libraryDependencies += "org.cvogt" %% "play-json-extensions" % "0.4.0"
+    libraryDependencies += "org.cvogt" %% "play-json-extensions" % "0.5.0"
 
+    // if you were using formatAdt or InvariantFormat you may want to upgrade to 0.4.0 first and then to 0.5.0
     // last version for play-json 2.3 was 0.2
 
 ### De-/Serialize case classes of arbitrary size (23+ fields allowed)
