@@ -6,15 +6,13 @@ import collection.immutable.ListMap
 import scala.annotation.implicitNotFound
 
 @implicitNotFound("""could not find implicit value for parameter helper: play.api.libs.json.Reads[${T}]
-TRIGGERED BY
-could not find implicit value for parameter helper: org.cvogt.play.json.OptionValidationDispatcher[${T}]
-WHICH MEANS
-Scala can't find a Reads for Option or for the contained type.
+TRIGGERED BY: could not find implicit value for parameter helper: org.cvogt.play.json.OptionValidationDispatcher[${T}]
 TO SOLVE THIS
-You may have to define a Reads/Format for the contained type or import a Reads of Option like this:
-import org.cvogt.play.json.implicits.optionWithNull // suggested
-or
-import org.cvogt.play.json.implicits.optionNoError // buggy play-json 2.3 behavior
+1. In case of Reads[Option[...]] you need to either
+   import org.cvogt.play.json.implicits.optionWithNull // suggested
+   or
+   import org.cvogt.play.json.implicits.optionNoError // buggy play-json 2.3 behavior
+2. Make sure there is a Reads[${T}] or Format[${T}] in the implicit scope
 """)
 final class OptionValidationDispatcher[T] private[json] (val validate: JsLookupResult => JsResult[T]) extends AnyVal
 
