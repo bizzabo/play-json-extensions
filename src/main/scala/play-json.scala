@@ -347,28 +347,43 @@ Try moving the call into a separate file, a sibbling package, a separate sbt sub
     }    
   }
 
-  def formatSealed[T: c.WeakTypeTag](encodeSingleton: Tree): Tree = {
+  def formatSingletonImplicit[T: c.WeakTypeTag](encodeSingleton: Tree, ev: Tree): Tree = formatSingleton[T](encodeSingleton)
+
+  def formatSingleton[T: c.WeakTypeTag](encodeSingleton: Tree): Tree = {
+    SingletonObject.checkSingletonObjectMacro[T](c)
+    val T = c.weakTypeOf[T].typeSymbol.asClass
+    val t = q"""
+      {
+        import $pjson._
+        import $pkg._
+        val encoded = $encodeSingleton.apply(classOf[$T])
+        new Format[$T]{
+          def reads(json: JsValue) = {
+            if(json == encoded)
+              JsSuccess(${T.module})
+            else JsError(s"not " + ${T.fullName})            
+          }
+          def writes(obj: $T) = encoded
+        }
+      }
+      """
+    //println(t)
+    t
+  }
+
+  def formatSealed[T: c.WeakTypeTag]: Tree = {
     assertSealedAbstract[T]
 
     val T = c.weakTypeOf[T].typeSymbol.asClass
-    val (singletons, classes) = T.knownDirectSubclasses.toVector.partition(_.isModuleClass) // toVector for ordering
-    val singletonsWithNames = singletons
-    val writes = classes.map{
-      sym => cq"""obj: $sym => Json.toJson[$sym](obj)(implicitly[Format[$sym]]).as[JsObject]"""
-    } ++ singletons.map{
-      sym => 
-        cq"_: $sym => $encodeSingleton.apply(classOf[${sym}])"
+    val subs = T.knownDirectSubclasses.toVector // toVector for ordering
+    
+    val writes = subs.map{
+      sym => cq"""obj: $sym => Json.toJson[$sym](obj)(implicitly[Format[$sym]])"""
     }
 
-    val reads = (singletons.map{
-      sym => q"""
-        if(json == $encodeSingleton.apply(classOf[${sym}]))
-          JsSuccess(${sym.asClass.module})
-        else JsError(s"not " + ${sym.fullName})
-      """
-    } ++ classes.map{
+    val reads = subs.map{
       sym => q"""json.validateAuto[$sym]"""
-    }).reduce( (l,r) => q"$l orElse $r" )
+    }.reduce( (l,r) => q"$l orElse $r" )
     
     val t = q"""
       {
@@ -406,6 +421,12 @@ object implicits{
 
   /** Stupidly reads a field as an Option mapping any error (format or missing field) to None */
   implicit def optionNoError[A](implicit reads: Reads[A]): Reads[Option[A]] = Reads.optionNoError[A]
+
+  /** Stupidly reads a field as an Option mapping any error (format or missing field) to None */
+  implicit def formatSingleton[T](
+    implicit encodeSingleton: SingletonEncoder, ev: SingletonObject[T]
+  ): Format[T]
+    = macro Macros.formatSingletonImplicit[T]
 }
 
 @deprecated("Not required anymore with formatSealed.","0.4.0")
@@ -428,9 +449,26 @@ object CaseClass{
   }
   /**
   fails compilation if T is not a case class
-  meaning this can be used as an implicit to check that a type is a case class
+  meaning this can be used as an implicit to check
   */
   implicit def checkCaseClass[T]: CaseClass[T] = macro checkCaseClassMacro[T]
+}
+
+final class SingletonObject[T]
+object SingletonObject{
+  def checkSingletonObjectMacro[T:c.WeakTypeTag](c: blackbox.Context) = {
+    import c.universe._
+    val T = c.weakTypeOf[T]
+    assert(
+      T.typeSymbol.isClass && T.typeSymbol.asClass.isModuleClass
+    )
+    q"new _root_.org.cvogt.play.json.SingletonObject[$T]"
+  }
+  /**
+  fails compilation if T is not a singleton object class
+  meaning this can be used as an implicit to check
+  */
+  implicit def checkSingletonObject[T]: SingletonObject[T] = macro checkSingletonObjectMacro[T]
 }
 
 import scala.reflect.ClassTag
@@ -447,9 +485,9 @@ object SingletonEncoder{
     )
   )
   def decodeName(name: String) = NameTransformer.decode(name.dropRight(1))
-  def simpleName = SingletonEncoder(cls => JsString(decodeName(cls.getSimpleName)))
-  def simpleNameLowerCase = SingletonEncoder(cls => JsString(camel2underscore(decodeName(cls.getSimpleName))))
-  def simpleNameUpperCase = SingletonEncoder(cls => JsString(camel2underscore(decodeName(cls.getSimpleName)).toUpperCase))
+  implicit def simpleName = SingletonEncoder(cls => JsString(decodeName(cls.getSimpleName)))
+  implicit def simpleNameLowerCase = SingletonEncoder(cls => JsString(camel2underscore(decodeName(cls.getSimpleName))))
+  implicit def simpleNameUpperCase = SingletonEncoder(cls => JsString(camel2underscore(decodeName(cls.getSimpleName)).toUpperCase))
 }
 
 object Jsonx{
@@ -479,7 +517,14 @@ object Jsonx{
   CAREFUL: It uses orElse for Reads in an unspecified order, which can produce wrong results
   in case of ambiguities.
   */
-  def formatSealed[T](
+  def formatSealed[T]: Format[T]
+    = macro Macros.formatSealed[T]
+
+  /** serializes a singleton object of given type with the given encoder */
+  def formatSingleton[T](
+    implicit encodeSingleton: SingletonEncoder
+  ): Format[T]
+    = macro Macros.formatSingleton[T]
     implicit encodeSingleton: SingletonEncoder
   ): Format[T]
     = macro Macros.formatSealed[T]

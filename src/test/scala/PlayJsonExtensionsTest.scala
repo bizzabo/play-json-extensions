@@ -17,7 +17,7 @@ sealed trait RecursiveAdt
 final case class RecursiveChild(o: Option[RecursiveAdt], s:String) extends RecursiveAdt
 object RecursiveFormat{
   import implicits.optionWithNull
-  implicit def jsonFormat: Format[RecursiveAdt] = Jsonx.formatSealed[RecursiveAdt](SingletonEncoder.simpleName)
+  implicit def jsonFormat: Format[RecursiveAdt] = Jsonx.formatSealed[RecursiveAdt]
   implicit def jsonFormat2: InvariantFormat[RecursiveChild] = Jsonx.formatCaseClass[RecursiveChild]   
 }
 object Adt{
@@ -125,7 +125,9 @@ class PlayJsonExtensionsTest extends FunSuite{
   }
   test("serialize Adt"){
     import Adt._
-    implicit val jsonFormat = Jsonx.formatSealed[SomeAdt](SingletonEncoder.simpleName)
+    implicit def simpleName = SingletonEncoder.simpleName
+    import implicits.formatSingleton
+    implicit val jsonFormat = Jsonx.formatSealed[SomeAdt]
     val a: SomeAdt = ChoiceA
     val b: SomeAdt = ChoiceB
     val c: SomeAdt = `Choice.C`
@@ -152,7 +154,7 @@ class PlayJsonExtensionsTest extends FunSuite{
   }
   test("serialize Adt with empty leafs"){
     import AdtWithEmptyLeafs._
-    implicit val jsonFormat = Jsonx.formatSealed[SomeAdt](SingletonEncoder.simpleName)
+    implicit val jsonFormat = Jsonx.formatSealed[SomeAdt]
     val x = A()
     val y = B()
     /* disabling tests for ambiguity, not supported at the moment

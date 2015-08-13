@@ -73,7 +73,9 @@ Play-Json extensions
       implicit def jsonFormat: Format[X] = Jsonx.formatCaseClass[X]
     }
     object SomeAdt{
-      implicit def jsonFormat: Format[SomeAdt] = Jsonx.formatSealed[SomeAdt]( SingletonEncoder.simpleName )
+      import SingletonEncoder.simpleName         // required for formatSingleton
+      import org.cvogt.play.json.formatSingleton // required if trait has object children
+      implicit def jsonFormat: Format[SomeAdt] = Jsonx.formatSealed[SomeAdt]
     }
 
     Json.parse("""A""").as[SomeAdt] == A
