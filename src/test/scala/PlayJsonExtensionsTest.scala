@@ -349,7 +349,6 @@ class JsonTests extends FunSuite{
   }
   case class Inline(a: Int)
   test("formatAuto"){
-    import org.cvogt.play.json.implicits.optionWithNull
     sealed trait SomeAdt
     case object A extends SomeAdt
     final case class X(i: Int, s: String/*, recursion: SomeAdt*/) extends SomeAdt
@@ -359,6 +358,7 @@ class JsonTests extends FunSuite{
     val foo = Foo(Bar(5,1.0f, Baz, Some(4): Option[Int]),A,"sdf",3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5)
     val foo2 = Foo(Bar(5,1.0f, Baz, None: Option[Int]),X(5,"x"/*,X(4,"z",A)*/),"sdf",3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5)
 
+    import org.cvogt.play.json.implicits.optionWithNull
     ;{
       val fmt: Format[SomeAdt] = Jsonx.formatAuto[SomeAdt]
     };{

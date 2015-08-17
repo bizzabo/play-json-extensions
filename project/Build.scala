@@ -6,6 +6,7 @@ object MyBuild extends Build{
   val projectName = "play-json-extensions"
   lazy val aRootProject = Project(id = projectName, base = file("."),
     settings = Seq(
+      version := "0.5.0",
       name := projectName,
       scalaVersion := "2.11.6",
       description := "Slick-style, cross-library, untyped mongo query builder for Scala",
@@ -23,7 +24,6 @@ object MyBuild extends Build{
       //scalacOptions ++= Seq("-Xprint:patmat", "-Xshow-phases"),
       testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oFD"),
       parallelExecution := false, // <- until TMap thread-safety issues are resolved
-      version := "0.5.0-SNAPSHOT",
       organizationName := "Jan Christopher Vogt",
       organization := "org.cvogt",
       scalacOptions in (Compile, doc) <++= (version,sourceDirectory in Compile,name).map((v,src,n) => Seq(
