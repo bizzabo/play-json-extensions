@@ -293,8 +293,8 @@ private[json] class Macros(val c: blackbox.Context){
       """
   }
 
-  private def verifyKnownDirectSubclassesPostTyper[T: c.WeakTypeTag]( macroCall: String ) = {
-    val T = c.weakTypeOf[T].typeSymbol.asClass
+  private def verifyKnownDirectSubclassesPostTyper( _T: Type, macroCall: String ) = {
+    val T = _T.typeSymbol.asClass
 
     val subs = T.knownDirectSubclasses
     
@@ -350,8 +350,8 @@ Try moving the call into a separate file, a sibbling package, a separate sbt sub
   def formatSealed[T: c.WeakTypeTag]: Tree = {
     assertSealedAbstract[T]
 
-    val T = c.weakTypeOf[T].typeSymbol.asClass
-    val subs = T.knownDirectSubclasses.toVector // toVector for ordering
+    val T = c.weakTypeOf[T]
+    val subs = T.typeSymbol.asClass.knownDirectSubclasses.toVector // toVector for ordering
     
     val writes = subs.map{
       sym => cq"""obj: $sym => Json.toJson[$sym](obj)(implicitly[Format[$sym]])"""
@@ -366,7 +366,7 @@ Try moving the call into a separate file, a sibbling package, a separate sbt sub
         import $pjson._
         import $pkg._
         new Format[$T]{
-          type VerifyKnownDirectSubclassesPostTyper = ${verifyKnownDirectSubclassesPostTyper[T](s"formatSealed[$T]")}
+          type VerifyKnownDirectSubclassesPostTyper = ${verifyKnownDirectSubclassesPostTyper(T: Type, s"formatSealed[$T]")}
           def reads(json: JsValue) = $reads
           def writes(obj: $T) = {
             obj match {
