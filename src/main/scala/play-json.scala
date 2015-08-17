@@ -92,13 +92,26 @@ TO SOLVE THIS
 """)
 final class OptionValidationDispatcher[T] private[json] (val validate: JsLookupResult => JsResult[T]) extends AnyVal
 
-object `package`{
-  implicit def nonOptionValidationDispatcher[T:Reads] = {
+object OptionValidationDispatcher{
+  // these methods allow to dispatch via overloading
+  // this is required to dispatch when not usign implicit search such as in the implementation of formatAuto
+  def dispatch[T](reads: Reads[T])(disambiguate: AnyRef = null) = {
+    new OptionValidationDispatcher(_.validate[T](reads))
+  }
+  def dispatch[T](reads: Reads[Option[T]])() = {
+    new OptionValidationDispatcher(_.validateOpt[T](reads))
+  }
+
+  // these methods allow dispatch via implicit search
+  implicit def dispatchNonOption[T:Reads] = {
     new OptionValidationDispatcher(_.validate[T])
   }
-  implicit def optionValidationDispatcher[T](implicit reads: Reads[Option[T]]) = {
+  implicit def dispatchOption[T](implicit reads: Reads[Option[T]]) = {
     new OptionValidationDispatcher(_.validateOpt[T])
   }
+}
+
+object `package`{
   implicit class JsLookupResultExtensions(res: JsLookupResult){
     /**
     properly validate Option and non-Option fields alike
