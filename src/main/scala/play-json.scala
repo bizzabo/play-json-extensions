@@ -180,7 +180,7 @@ private[json] class Macros(val c: blackbox.Context){
 
     ListMap(params.map{ field =>
       ( field.name.toTermName.decodedName.toString,
-        field.typeSignature)
+        field.infoIn(tpe))
     }: _*)
   }
 
