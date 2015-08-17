@@ -81,11 +81,14 @@ import internals._
 @implicitNotFound("""could not find implicit value for parameter helper: play.api.libs.json.Reads[${T}]
 TRIGGERED BY: could not find implicit value for parameter helper: org.cvogt.play.json.OptionValidationDispatcher[${T}]
 TO SOLVE THIS
-1. In case of Reads[Option[...]] you need to either
+1. Make sure there is a Reads[${T}] or Format[${T}] in the implicit scope
+2. In case of Reads[Option[...]] you need to either
    import org.cvogt.play.json.implicits.optionWithNull // suggested
    or
    import org.cvogt.play.json.implicits.optionNoError // buggy play-json 2.3 behavior
-2. Make sure there is a Reads[${T}] or Format[${T}] in the implicit scope
+3. In case of Reads[... .type]
+   import org.cvogt.play.json.SingletonEncoder.simpleName
+   import org.cvogt.play.json.implicits.formatSingleton
 """)
 final class OptionValidationDispatcher[T] private[json] (val validate: JsLookupResult => JsResult[T]) extends AnyVal
 
@@ -453,6 +456,7 @@ object Jsonx{
   Does currently only for for case classes, sealed traits, objects and manually defined formatters.
   Automatically, recursively delegates to formatCaseClass, formatSealed, formatInline, formatSingleton, implicitly[Format[...]]
   Note: defaults to inline single-value case classes. Override if required.
+  Currently not supported: classes with type arguments including tuples
   */
   def formatAuto[T]: Format[T]
     = macro Macros.formatAuto[T]
