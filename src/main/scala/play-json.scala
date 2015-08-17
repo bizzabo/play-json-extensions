@@ -24,9 +24,9 @@ package object internals{
     def checkCaseClassMacro[T:c.WeakTypeTag](c: blackbox.Context) = {
       import c.universe._
       val T = c.weakTypeOf[T]
-      assert(
-        T.typeSymbol.isClass && T.typeSymbol.asClass.isCaseClass
-      )
+      if(
+        !T.typeSymbol.isClass || !T.typeSymbol.asClass.isCaseClass
+      ) c.error(c.enclosingPosition,"")
       q"new _root_.org.cvogt.play.json.internals.CaseClass[$T]"
     }
     /**
@@ -41,9 +41,9 @@ package object internals{
     def checkSingletonObjectMacro[T:c.WeakTypeTag](c: blackbox.Context) = {
       import c.universe._
       val T = c.weakTypeOf[T]
-      assert(
-        T.typeSymbol.isClass && T.typeSymbol.asClass.isModuleClass
-      )
+      if(
+        !T.typeSymbol.isClass || !T.typeSymbol.asClass.isModuleClass
+      ) c.error(c.enclosingPosition,"")
       q"new _root_.org.cvogt.play.json.internals.SingletonObject[$T]"
     }
     /**
