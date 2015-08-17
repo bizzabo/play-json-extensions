@@ -144,7 +144,6 @@ class PlayJsonExtensionsTest extends FunSuite{
     */
   }
   test("serialize recursive class"){
-    import RecursiveFormat._
     val x = RecursiveClass(Some(RecursiveClass(Some(RecursiveClass(None,"c")),"b")),"a")
     val json = Json.toJson[RecursiveClass](x)(implicitly[Format[RecursiveClass]])
     val res = Json.fromJson[RecursiveClass](json)(implicitly[Format[RecursiveClass]])
@@ -350,21 +349,53 @@ class JsonTests extends FunSuite{
   }
   case class Inline(a: Int)
   test("formatAuto"){
+    import org.cvogt.play.json.implicits.optionWithNull
     sealed trait SomeAdt
     case object A extends SomeAdt
-    final case class X(i: Int, s: String) extends SomeAdt
+    final case class X(i: Int, s: String/*, recursion: SomeAdt*/) extends SomeAdt
     object Baz
-    case class Bar(a: Int, b:Float, foo: Baz.type)
+    case class Bar(a: Int, b:Float, foo: Baz.type, o: Option[Int])
     case class Foo(_1:Bar,_11:SomeAdt, _2:String,_3:Int,_4:Int,_5:Int,_21:Int,_22:Int,_23:Int,_24:Int,_25:Int,_31:Int,_32:Int,_33:Int,_34:Int,_35:Int,_41:Int,_42:Int,_43:Int,_44:Int,_45:Int,_51:Int,_52:Int,_53:Int,_54:Int,_55:Int)
-    val foo = Foo(Bar(5,1.0f, Baz),A,"sdf",3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5)
-    val foo2 = Foo(Bar(5,1.0f, Baz),X(5,"x"),"sdf",3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5)
-    
+    val foo = Foo(Bar(5,1.0f, Baz, Some(4): Option[Int]),A,"sdf",3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5)
+    val foo2 = Foo(Bar(5,1.0f, Baz, None: Option[Int]),X(5,"x"/*,X(4,"z",A)*/),"sdf",3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5)
+
+    ;{
+      val fmt: Format[SomeAdt] = Jsonx.formatAuto[SomeAdt]
+    };{
+      val fmt: Format[Option[SomeAdt]] = Jsonx.formatAuto[Option[SomeAdt]]
+    };{
+      val fmt: Format[A.type] = Jsonx.formatAuto[A.type]
+    };{
+      val fmt: Format[Option[A.type]] = Jsonx.formatAuto[Option[A.type]]
+    };{
+      val fmt: Format[X] = Jsonx.formatAuto[X]
+    };{
+      val fmt: Format[Option[X]] = Jsonx.formatAuto[Option[X]]
+    };{
+      val fmt: Format[Baz.type] = Jsonx.formatAuto[Baz.type]
+    };{
+      val fmt: Format[Option[Baz.type]] = Jsonx.formatAuto[Option[Baz.type]]
+    };{
+      val fmt: Format[Bar] = Jsonx.formatAuto[Bar]
+    };{
+      val fmt: Format[Option[Bar]] = Jsonx.formatAuto[Option[Bar]]
+    };{
+      val fmt: Format[Int] = Jsonx.formatAuto[Int]
+    };{
+      val fmt: Format[Option[Int]] = Jsonx.formatAuto[Option[Int]]
+    };{
+      val fmt: Format[Foo] = Jsonx.formatAuto[Foo]
+    };{
+      val fmt: Format[Option[Foo]] = Jsonx.formatAuto[Option[Foo]]
+    }
+
     val fmt2: Format[Foo] = Jsonx.formatAuto[Foo] // not implicit to avoid infinite recursion
 
     {
       implicit def fmt3: Format[Foo] = fmt2    
       val json = Json.toJson( foo )
       assert(foo === json.as[Foo])
+      assert(JsSuccess(Some(foo)) === json.validateAuto[Option[Foo]])
       val json2 = Json.toJson( foo2 )
       assert(foo2 === json2.as[Foo])
     }

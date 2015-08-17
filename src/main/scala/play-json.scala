@@ -184,11 +184,16 @@ private[json] class Macros(val c: blackbox.Context){
     }: _*)
   }
 
-  def formatAuto[T: c.WeakTypeTag]/*(format: Tree)*/: Tree = {
-    val T = c.weakTypeOf[T]
+  def formatAuto[T: c.WeakTypeTag]: Tree = formatAutoInternal(c.weakTypeOf[T])
+  def formatAutoInternal(T: Type): Tree = {
     import internals.TraversableLikeExtensions
     def defaultFormatter =
-      if( isModuleClass(T) ){
+      if( T <:< typeOf[Option[_]] ){
+        val s = T.typeArgs.head
+        q"""
+          Format.optionWithNull(${formatAutoInternal(s)})
+        """
+      }else if( isModuleClass(T) ){
         q"""
           implicit def simpleName = SingletonEncoder.simpleName
           implicits.formatSingleton
