@@ -73,7 +73,7 @@ Play-Json extensions
     }
     object SomeAdt{
       import SingletonEncoder.simpleName         // required for formatSingleton
-      import org.cvogt.play.json.formatSingleton // required if trait has object children
+      import org.cvogt.play.json.implicits.formatSingleton // required if trait has object children
       implicit def jsonFormat: Format[SomeAdt] = Jsonx.formatSealed[SomeAdt]
     }
 
