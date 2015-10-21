@@ -46,6 +46,18 @@ object AdtWithEmptyLeafs{
   }
 }
 
+sealed trait SealedTrait
+case class CaseClassChild(i: Int) extends SealedTrait
+
+object FailureTest{
+  import implicits.optionWithNull
+  import org.scalatest.Assertions._
+  type AbstractType
+  implicit val childFormat = Jsonx.formatCaseClass[CaseClassChild]
+  Jsonx.formatSealed[SealedTrait]
+  assertTypeError("Jsonx.formatSealed[Foo#X]")
+}
+
 class PlayJsonExtensionsTest extends FunSuite{
   import implicits.optionWithNull
   test("de/serialize case class > 22"){
@@ -406,5 +418,6 @@ class JsonTests extends FunSuite{
     assert("""{"a":5}""" ===  Json.toJson( DontInline(5) )(fmt3).toString)
 
   }
+  FailureTest // needed to initialize object
 }
 class Bar(val i: Int) extends AnyVal

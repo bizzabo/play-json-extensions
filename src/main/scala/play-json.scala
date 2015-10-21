@@ -311,7 +311,7 @@ private[json] class Macros(val c: blackbox.Context){
       """
   }
 
-  private def verifyKnownDirectSubclassesPostTyper( _T: Type, macroCall: String ) = {
+  private def verifyKnownDirectSubclassesPostTyper( _T: Type, macroCall: String ): Tree = {
     val T = _T.typeSymbol.asClass
 
     val subs = T.knownDirectSubclasses
@@ -325,19 +325,28 @@ private[json] class Macros(val c: blackbox.Context){
 s"""macro call $macroCall happend in a place, where typechecking of $T hasn't been completed yet.
 Completion is required in order to find all direct subclasses.
 Try moving the call into a separate file, a sibbling package, a separate sbt sub project or else.
+This is caused by https://issues.scala-lang.org/browse/SI-7046 and can only be avoided by manually moving the call.
 """
       )
 
     val checkSubsPostTyperTypTree =
       new global.TypeTreeWithDeferredRefCheck()(() => { checkSubsPostTyper ; global.TypeTree(global.NoType) }).asInstanceOf[TypTree]
+    q"type VerifyKnownDirectSubclassesPostTyper = $checkSubsPostTyperTypTree"
+  }
+
+  private def assertClass[T: c.WeakTypeTag](msg: String = s"required class or trait"){
+    val T = c.weakTypeOf[T].typeSymbol
+    if( !T.isClass ){
+      c.error(c.enclosingPosition, msg + ", found " + T)
+    }    
   }
 
   private def assertSealedAbstract[T: c.WeakTypeTag]{
+    assertClass[T]()
     val T = c.weakTypeOf[T].typeSymbol.asClass
-
-    if(!T.isSealed || !T.isAbstract ){
+    if( !T.isSealed || !T.isAbstract ){
       lazy val modifiers = T.toString.split(" ").dropRight(1).mkString
-      c.error(c.enclosingPosition, s"required sealed trait or sealed abstract class, found $modifiers: ${T.fullName}")
+      c.error(c.enclosingPosition, s"required sealed trait or sealed abstract class, found $modifiers ${T.fullName}")
     }    
   }
 
@@ -370,6 +379,14 @@ Try moving the call into a separate file, a sibbling package, a separate sbt sub
 
     val T = c.weakTypeOf[T]
     val subs = T.typeSymbol.asClass.knownDirectSubclasses.toVector // toVector for ordering
+
+    //verifyKnownDirectSubclassesPostTyper
+    if(subs.isEmpty)
+      c.error(c.enclosingPosition,s"""
+No child classes found for $T. If there clearly are child classes,
+try moving the call into a separate file, a sibbling package, a separate sbt sub project or else.
+This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can only be avoided by manually moving the call.
+      """)
     
     val writes = subs.map{
       sym => cq"""obj: $sym => Json.toJson[$sym](obj)(implicitly[Format[$sym]])"""
@@ -384,7 +401,7 @@ Try moving the call into a separate file, a sibbling package, a separate sbt sub
         import $pjson._
         import $pkg._
         new Format[$T]{
-          type VerifyKnownDirectSubclassesPostTyper = ${verifyKnownDirectSubclassesPostTyper(T: Type, s"formatSealed[$T]")}
+          ${verifyKnownDirectSubclassesPostTyper(T: Type, s"formatSealed[$T]")}
           def reads(json: JsValue) = $reads
           def writes(obj: $T) = {
             obj match {
