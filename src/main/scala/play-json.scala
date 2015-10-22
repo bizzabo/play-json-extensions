@@ -179,6 +179,25 @@ private[json] class Macros(val c: blackbox.Context){
         field.infoIn(tpe))
     }: _*)
   }
+  private def caseClassFieldsDefaults( tpe: Type ): ListMap[String, Option[Tree]] = {
+    if(tpe.companion == NoType){
+      ListMap()
+    } else {    
+      ListMap( tpe.companion.member( TermName( "apply" ) ).asMethod.paramLists.flatten.zipWithIndex.map {
+        case ( field, i ) =>
+          (
+            field.name.toTermName.decodedName.toString,
+            {
+              val method = TermName( s"apply$$default$$${i + 1}" )
+              tpe.companion.member( method ) match {
+                case NoSymbol => None
+                case _        => Some( q"${tpe.typeSymbol.companion}.$method" )
+              }
+            }
+          )
+      }: _*)
+    }
+  }
 
   def formatAuto[T: c.WeakTypeTag]: Tree = formatAutoInternal(c.weakTypeOf[T])
   def formatAutoInternal(T: Type): Tree = {
@@ -257,17 +276,27 @@ private[json] class Macros(val c: blackbox.Context){
     """    
   }
 
-  def formatCaseClass[T: c.WeakTypeTag](ev: Tree): Tree = {
+  def formatCaseClassUseDefaults[T: c.WeakTypeTag](ev: Tree): Tree = formatCaseClassInternal[T](ev, true)
+
+  def formatCaseClass[T: c.WeakTypeTag](ev: Tree): Tree = formatCaseClassInternal[T](ev, false)
+
+  private def formatCaseClassInternal[T: c.WeakTypeTag](ev: Tree, useDefaults: Boolean): Tree = {
     val T = c.weakTypeOf[T]
     if(!isCaseClass(T))
       c.error(c.enclosingPosition, s"not a case class: $T")
+    val defaults = caseClassFieldsDefaults(T)
+    def orDefault(t: Tree, name: String) = {
+      val default = defaults.get(name).flatten
+      default.filter(_ => useDefaults).map(d => q"$t orElse JsSuccess($d)").getOrElse(t)
+    }
     val (results,mkResults) = caseClassFieldsTypes(T).map{
       case (k,t) =>
         val name = TermName(c.freshName)
+        val result = q"(json \ $k).validateAuto[$t].repath(path)"
         (name, q"""val $name: JsResult[$t] = {
             val path = (JsPath() \ $k)
             val resolved = path.asSingleJsResult(json)
-            val result = (json \ $k).validateAuto[$t].repath(path)
+            val result = ${orDefault(result,k)}
             (resolved,result) match {
               case (_,result:JsSuccess[_]) => result
               case _ => resolved.flatMap(_ => result)
@@ -460,6 +489,15 @@ object Jsonx{
     (implicit ev: CaseClass[T])
     : Format[T]
     = macro Macros.formatCaseClass[T]
+
+  /**
+  Generates a PlayJson Format[T] for a case class T with any number of fields (>22 included)
+  Uses default values when fields are not found
+  */
+  def formatCaseClassUseDefaults[T]
+    (implicit ev: CaseClass[T])
+    : Format[T]
+    = macro Macros.formatCaseClassUseDefaults[T]
 
   /**
   Serialize one member classes such as value classes as their single contained value instead of a wrapping js object.

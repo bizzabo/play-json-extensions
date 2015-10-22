@@ -76,6 +76,15 @@ class PlayJsonExtensionsTest extends FunSuite{
     val json = Json.toJson( bar )
     assert(bar === json.as[Bar])
   }
+  case class BarWithDefault(s: String, i: Int = 6)
+  test("de/serialize case class default value"){
+    implicit def fmt1 = Jsonx.formatCaseClassUseDefaults[BarWithDefault]
+    assert(BarWithDefault("asd",6) === Json.parse("""{"s":"asd"}""").validate[BarWithDefault].get)
+  }
+  test("don't de/serialize case class default value by default"){
+    implicit def fmt1 = Jsonx.formatCaseClass[BarWithDefault]
+    assert(Json.parse("""{"s":"asd"}""").validate[BarWithDefault].isInstanceOf[JsError])
+  }
   test("formatCaseClass with explicit return type"){
     case class Bar()
     implicit def fmt1: Format[Bar] = Jsonx.formatCaseClass[Bar]
