@@ -111,6 +111,10 @@ object OptionValidationDispatcher{
   }
 }
 
+object debugMacro{
+  def apply[T](tree: T): T = macro Macros.debugMacro
+}
+
 object `package`{
   implicit class JsLookupResultExtensions(res: JsLookupResult){
     /** properly validate Option and non-Option fields alike */
@@ -126,6 +130,13 @@ private[json] class Macros(val c: blackbox.Context){
   import c.universe._
   val pkg = q"_root_.org.cvogt.play.json"
   val pjson = q"_root_.play.api.libs.json"
+
+  /** like identity but prints desugared code and tree */
+  def debugMacro(tree: Tree): Tree = {
+    println("code:\n  "+tree)
+    println("Tree:\n  "+showRaw(tree))
+    tree
+  }
 
   /**
   Generates a list of all known classes and traits in an inheritance tree.
