@@ -316,7 +316,7 @@ class JsonTests extends FunSuite{
     assert(None === Json.fromJson[Option[String]](Json.parse("""5""")).get)
     assert(None === Json.fromJson[Option[String]](Json.parse("""{}""")).get)
 
-    assert(B(None) === Json.fromJson[B](Json.parse("""{"s": {}}""")).get)
+    assert(Json.fromJson[B](Json.parse("""{"s": {}}""")).isInstanceOf[JsError])
     assert(A("foo") === Json.fromJson[A](Json.parse("""{"s": "foo"}""")).get)
     assert(B(Some("foo")) === Json.fromJson[B](Json.parse("""{"s": "foo"}""")).get)
     assert(B(None) === Json.fromJson[B](Json.parse("""{"s": null}""")).get)
@@ -334,11 +334,11 @@ class JsonTests extends FunSuite{
 
     assert(Optional(None) === Json.fromJson[Optional](Json.parse("""{}""")).get)
     assert(Optional(Some(Mandatory(List("test")))) === Json.fromJson[Optional](Json.parse("""{"o":{"s":["test"]}}""")).get)
-    assert(Optional(None) === Json.fromJson[Optional](Json.parse("""{"o":{}}""")).get)
+    assert(Json.fromJson[Optional](Json.parse("""{"o":{}}""")).isInstanceOf[JsError])
     
     assert(Optional2(None) === Json.fromJson[Optional2](Json.parse("""{}""")).get)
     assert(Optional2(Some(Mandatory2(List("test")))) === Json.fromJson[Optional2](Json.parse("""{"o":{"s":["test"]}}""")).get)
-    assert(Optional2(None) === Json.fromJson[Optional2](Json.parse("""{"o":{}}""")).get)
+    assert(Json.parse("""{"o":{}}""").validate[Optional2].isInstanceOf[JsError])
 
     assert(ClassOuter(Nil) === Json.fromJson[ClassOuter](Json.parse("""{"outer": []}""")).get)
     assert(ClassOuter2(Nil) === Json.fromJson[ClassOuter2](Json.parse("""{"outer": []}""")).get)

@@ -95,19 +95,19 @@ final class OptionValidationDispatcher[T] private[json] (val validate: JsLookupR
 object OptionValidationDispatcher{
   // these methods allow to dispatch via overloading
   // this is required to dispatch when not usign implicit search such as in the implementation of formatAuto
-  def dispatch[T](reads: Reads[T])(disambiguate: AnyRef = null) = {
-    new OptionValidationDispatcher(_.validate[T](reads))
+  def dispatch[T](reads: Reads[T])(disambiguate: AnyRef = null): OptionValidationDispatcher[T] = {
+    new OptionValidationDispatcher[T](_.validate[T](reads))
   }
-  def dispatch[T](reads: Reads[Option[T]])() = {
-    new OptionValidationDispatcher(_.validateOpt[T](reads))
+  def dispatch[T](reads: Reads[T])(): OptionValidationDispatcher[Option[T]] = {
+    new OptionValidationDispatcher[Option[T]](_.validateOpt[T](reads))
   }
 
   // these methods allow dispatch via implicit search
-  implicit def dispatchNonOption[T:Reads] = {
-    new OptionValidationDispatcher(_.validate[T])
+  implicit def dispatchNonOption[T:Reads]: OptionValidationDispatcher[T] = {
+    new OptionValidationDispatcher[T](_.validate[T])
   }
-  implicit def dispatchOption[T](implicit reads: Reads[Option[T]]) = {
-    new OptionValidationDispatcher(_.validateOpt[T])
+  implicit def dispatchOption[T:Reads]: OptionValidationDispatcher[Option[T]] = {
+    new OptionValidationDispatcher[Option[T]](_.validateOpt[T])
   }
 }
 
@@ -120,9 +120,9 @@ object `package`{
     /**
     Backport of >2.4.1 validateOpt as an extension method
     */
-    def validateOpt[T](implicit reads: Reads[Option[T]]): JsResult[Option[T]] = res match {
+    def validateOpt[T](implicit reads: Reads[T]): JsResult[Option[T]] = res match {
       case JsUndefined() => JsSuccess(None.asInstanceOf[Option[T]])
-      case JsDefined(a) => reads.reads(a)
+      case JsDefined(a) => Reads.optionWithNull(reads).reads(a)
     }
   }
   implicit class JsValueExtensions(res: JsValue){
@@ -133,7 +133,7 @@ object `package`{
     /**
     Backport of >2.4.1 validateOpt as an extension method
     */
-    def validateOpt[T](implicit reads: Reads[Option[T]]): JsResult[Option[T]] = JsDefined(res).validateOpt[T]
+    def validateOpt[T](implicit reads: Reads[T]): JsResult[Option[T]] = JsDefined(res).validateOpt[T]
   }
 }
 
