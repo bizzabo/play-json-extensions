@@ -8,13 +8,13 @@ object MyBuild extends Build{
     settings = Seq(
       version := "0.5.0",
       name := projectName,
-      scalaVersion := "2.11.6",
+      scalaVersion := "2.11.7",
       description := "Slick-style, cross-library, untyped mongo query builder for Scala",
       libraryDependencies ++=   Seq(
         "com.typesafe.play" %% "play-json" % "2.4.1",
        // "org.cvogt" %% "scala-extensions" % "0.2",
         "org.scala-lang" % "scala-compiler" % scalaVersion.value % "compile",
-        "org.scalatest" %% "scalatest" % "2.2.4" % "test"
+        "org.scalatest" %% "scalatest" % "2.2.5" % "test"
       ),
       resolvers ++= Seq(Resolver.sonatypeRepo("releases"),Resolver.sonatypeRepo("snapshots")),
       scalacOptions ++= Seq(
