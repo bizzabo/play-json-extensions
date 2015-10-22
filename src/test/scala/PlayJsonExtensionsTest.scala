@@ -91,7 +91,7 @@ class PlayJsonExtensionsTest extends FunSuite{
     val json = Json.parse(Json.stringify( // <- otherwise c = JsString(null), not JsNull
       Json.toJson(bar)
     ))
-    assert(JsSuccess(bar) === json.validate[Bar])
+    assert(bar === json.validate[Bar].get)
     assert(
       Set("b"->JsString("foo"), "d"->JsString("foo"))
       === json.as[JsObject].fields.toSet
@@ -132,15 +132,15 @@ class PlayJsonExtensionsTest extends FunSuite{
     assert("Choice.C" === Json.toJson(c).as[JsString].value)
 
     assert(x !== y)
-    assert(JsSuccess(ChoiceA) === Json.fromJson[SomeAdt](Json.toJson(ChoiceA)))
-    assert(JsSuccess(ChoiceB) === Json.fromJson[SomeAdt](Json.toJson(ChoiceB)))
-    assert(JsSuccess(`Choice.C`) === Json.fromJson[SomeAdt](Json.toJson(`Choice.C`)))
+    assert(ChoiceA === Json.fromJson[SomeAdt](Json.toJson(ChoiceA)).get)
+    assert(ChoiceB === Json.fromJson[SomeAdt](Json.toJson(ChoiceB)).get)
+    assert(`Choice.C` === Json.fromJson[SomeAdt](Json.toJson(`Choice.C`)).get)
 
     /* disabling tests for ambiguity, not supported at the moment
-    assert(JsSuccess(x) === Json.fromJson[SomeAdt](Json.toJson[SomeAdt](x)))
-    assert(JsSuccess(y) === Json.fromJson[SomeAdt](Json.toJson[SomeAdt](y)))
-    assert(JsSuccess(x) === Json.fromJson[SomeAdt](Json.toJson(x)))
-    assert(JsSuccess(y) === Json.fromJson[SomeAdt](Json.toJson(y)))
+    assert(x === Json.fromJson[SomeAdt](Json.toJson[SomeAdt](x)).get)
+    assert(y === Json.fromJson[SomeAdt](Json.toJson[SomeAdt](y)).get)
+    assert(x === Json.fromJson[SomeAdt](Json.toJson(x)).get)
+    assert(y === Json.fromJson[SomeAdt](Json.toJson(y)).get)
     */
   }
   test("serialize Adt with empty leafs"){
@@ -149,31 +149,31 @@ class PlayJsonExtensionsTest extends FunSuite{
     val x = A()
     val y = B()
     /* disabling tests for ambiguity, not supported at the moment
-    assert(JsSuccess(x) === Json.fromJson[SomeAdt](Json.toJson[SomeAdt](x)))
-    assert(JsSuccess(y) === Json.fromJson[SomeAdt](Json.toJson[SomeAdt](y)))
-    assert(JsSuccess(x) === Json.fromJson[SomeAdt](Json.toJson(x)))
-    assert(JsSuccess(y) === Json.fromJson[SomeAdt](Json.toJson(y)))
+    assert(x === Json.fromJson[SomeAdt](Json.toJson[SomeAdt](x)).get)
+    assert(y === Json.fromJson[SomeAdt](Json.toJson[SomeAdt](y)).get)
+    assert(x === Json.fromJson[SomeAdt](Json.toJson(x)).get)
+    assert(y === Json.fromJson[SomeAdt](Json.toJson(y)).get)
     */
   }
   test("serialize recursive class"){
     val x = RecursiveClass(Some(RecursiveClass(Some(RecursiveClass(None,"c")),"b")),"a")
     val json = Json.toJson[RecursiveClass](x)(implicitly[Format[RecursiveClass]])
     val res = Json.fromJson[RecursiveClass](json)(implicitly[Format[RecursiveClass]])
-    assert(JsSuccess(x) === res)
+    assert(x === res.get)
   }
   test("serialize recursive child"){
     import RecursiveFormat._
     val x = RecursiveChild(Some(RecursiveChild(Some(RecursiveChild(None,"c")),"b")),"a")
     val json = Json.toJson[RecursiveChild](x)(implicitly[Format[RecursiveChild]])
     val res = Json.fromJson[RecursiveChild](json)(implicitly[Format[RecursiveChild]])
-    assert(JsSuccess(x) === res)
+    assert(x === res.get)
   }
   test("serialize recursive Adt"){
     import RecursiveFormat._
     val x = RecursiveChild(Some(RecursiveChild(Some(RecursiveChild(None,"c")),"b")),"a")
     val json = Json.toJson[RecursiveAdt](x)(implicitly[Format[RecursiveAdt]])
     val res = Json.fromJson[RecursiveAdt](json)(implicitly[Format[RecursiveAdt]])
-    assert(JsSuccess(x) === res)
+    assert(x === res.get)
   }
   test("deserialize case class error messages"){
     val json = Json.parse("""{"i":"test"}""")
@@ -196,8 +196,8 @@ class PlayJsonExtensionsTest extends FunSuite{
   test("deserialize tuple"){
     val json = Json.parse("""[1,1.0,"Test"]""")
     val res = Json.fromJson[(Int,Double,String)](json)
-    assert(JsSuccess((1,1.0,"Test")) === res)
-    assert(JsSuccess((1,1.0,"Test")) === Json.toJson(res.get).validate[(Int,Double,String)])
+    assert((1,1.0,"Test") === res.get)
+    assert((1,1.0,"Test") === Json.toJson(res.get).validate[(Int,Double,String)].get)
   }
   test("deserialize tuple wrong size"){
     case class Foo(bar: (Int,Double,String))
@@ -262,41 +262,42 @@ class JsonTests extends FunSuite{
     import JsonTestClasses._
 
     assert((Json.parse("""{}""") \ "s").validate[Option[String]].isInstanceOf[JsError])
-    assert(JsSuccess(Some("foo")) === (Json.parse("""{"s": "foo"}""") \ "s").validate[Option[String]])
-    assert(JsSuccess(None) === (Json.parse("""{}""") \ "s").validateOpt[String])
-    assert(JsSuccess(Some("foo")) === (Json.parse("""{"s": "foo"}""") \ "s").validateOpt[String])
-    assert(JsSuccess(None) === (Json.parse("""{}""") \ "s").validateAuto[Option[String]])
-    assert(JsSuccess(Some("foo")) === (Json.parse("""{"s": "foo"}""") \ "s").validateAuto[Option[String]])
+    assert(Some("foo") === (Json.parse("""{"s": "foo"}""") \ "s").validate[Option[String]].get)
+    assert(None === (Json.parse("""{}""") \ "s").validateOpt[String].get)
+    assert(Some("foo") === (Json.parse("""{"s": "foo"}""") \ "s").validateOpt[String].get)
+    assert(None === (Json.parse("""{}""") \ "s").validateAuto[Option[String]].get)
+    assert(Some("foo") === (Json.parse("""{"s": "foo"}""") \ "s").validateAuto[Option[String]].get)
 
     assert(Json.fromJson[Option[String]](Json.parse("""5""")).isInstanceOf[JsError])
     assert(Json.fromJson[Option[String]](Json.parse("""{}""")).isInstanceOf[JsError])
 
     assert(Json.fromJson[B](Json.parse("""{"s": {}}""")).isInstanceOf[JsError])
-    assert(JsSuccess(A("foo")) === Json.fromJson[A](Json.parse("""{"s": "foo"}""")))
-    assert(JsSuccess(B(Some("foo"))) === Json.fromJson[B](Json.parse("""{"s": "foo"}""")))
-    assert(JsSuccess(B(None)) === Json.fromJson[B](Json.parse("""{"s": null}""")))
-    assert(JsSuccess(B(None)) === Json.fromJson[B](Json.parse("""{}""")))
-    assert(JsSuccess(B(None)) === Json.fromJson[B](Json.parse("""5""")))
-    assert(JsSuccess(B(None)) === Json.fromJson[B](Json.parse("""null""")))
+
+    assert(A("foo") ===  Json.fromJson[A](Json.parse("""{"s": "foo"}""")).get)
+    assert(B(Some("foo")) === Json.fromJson[B](Json.parse("""{"s": "foo"}""")).get)
+    assert(B(None) === Json.fromJson[B](Json.parse("""{"s": null}""")).get)
+    assert(B(None) === Json.fromJson[B](Json.parse("""{}""")).get)
+    assert(B(None) === Json.fromJson[B](Json.parse("""5""")).get)
+    assert(B(None) === Json.fromJson[B](Json.parse("""null""")).get)
 
     assert(Json.fromJson[B](Json.parse("""{"s": {}}""")).isInstanceOf[JsError])
     assert(A2("foo") === Json.fromJson[A2](Json.parse("""{"s": "foo"}""")).get)
     assert(B2(Some("foo")) === Json.fromJson[B2](Json.parse("""{"s": "foo"}""")).get)
-    assert(JsSuccess(B2(None)) === Json.fromJson[B2](Json.parse("""{"s": null}""")))
-    assert(JsSuccess(B2(None)) === Json.fromJson[B2](Json.parse("""{}""")))
-    assert(JsSuccess(B2(None)) === Json.fromJson[B2](Json.parse("""5""")))
-    assert(JsSuccess(B2(None)) === Json.fromJson[B2](Json.parse("""null""")))
+    assert(B2(None) === Json.fromJson[B2](Json.parse("""{"s": null}""")).get)
+    assert(B2(None) === Json.fromJson[B2](Json.parse("""{}""")).get)
+    assert(B2(None) === Json.fromJson[B2](Json.parse("""5""")).get)
+    assert(B2(None) === Json.fromJson[B2](Json.parse("""null""")).get)
 
-    assert(JsSuccess(Optional(None)) === Json.fromJson[Optional](Json.parse("""{}""")))
-    assert(JsSuccess(Optional(Some(Mandatory(List("test"))))) === Json.fromJson[Optional](Json.parse("""{"o":{"s":["test"]}}""")))
+    assert(Optional(None) === Json.fromJson[Optional](Json.parse("""{}""")).get)
+    assert(Optional(Some(Mandatory(List("test")))) === Json.fromJson[Optional](Json.parse("""{"o":{"s":["test"]}}""")).get)
     assert(Json.parse("""{"o":{}}""").validate[Optional].isInstanceOf[JsError])
 
-    assert(JsSuccess(Optional2(None)) === Json.fromJson[Optional2](Json.parse("""{}""")))
-    assert(JsSuccess(Optional2(Some(Mandatory2(List("test"))))) === Json.fromJson[Optional2](Json.parse("""{"o":{"s":["test"]}}""")))
+    assert(Optional2(None) === Json.fromJson[Optional2](Json.parse("""{}""")).get)
+    assert(Optional2(Some(Mandatory2(List("test")))) === Json.fromJson[Optional2](Json.parse("""{"o":{"s":["test"]}}""")).get)
     assert(Json.parse("""{"o":{}}""").validate[Optional2].isInstanceOf[JsError])
 
-    assert(JsSuccess(ClassOuter(Nil)) === Json.fromJson[ClassOuter](Json.parse("""{"outer": []}""")))
-    assert(JsSuccess(ClassOuter2(Nil)) === Json.fromJson[ClassOuter2](Json.parse("""{"outer": []}""")))
+    assert(ClassOuter(Nil) === Json.fromJson[ClassOuter](Json.parse("""{"outer": []}""")).get)
+    assert(ClassOuter2(Nil) === Json.fromJson[ClassOuter2](Json.parse("""{"outer": []}""")).get)
   }
 
   test("json optionNoError"){
@@ -306,54 +307,54 @@ class JsonTests extends FunSuite{
     import JsonTestClasses._
 
     assert((Json.parse("""{}""") \ "s").validate[Option[String]].isInstanceOf[JsError])
-    assert(JsSuccess(Some("foo")) === (Json.parse("""{"s": "foo"}""") \ "s").validate[Option[String]])
-    assert(JsSuccess(None) === (Json.parse("""{}""") \ "s").validateOpt[String])
-    assert(JsSuccess(Some("foo")) === (Json.parse("""{"s": "foo"}""") \ "s").validateOpt[String])
-    assert(JsSuccess(None) === (Json.parse("""{}""") \ "s").validateAuto[Option[String]])
-    assert(JsSuccess(Some("foo")) === (Json.parse("""{"s": "foo"}""") \ "s").validateAuto[Option[String]])
+    assert(Some("foo") === (Json.parse("""{"s": "foo"}""") \ "s").validate[Option[String]].get)
+    assert(None === (Json.parse("""{}""") \ "s").validateOpt[String].get)
+    assert(Some("foo") === (Json.parse("""{"s": "foo"}""") \ "s").validateOpt[String].get)
+    assert(None === (Json.parse("""{}""") \ "s").validateAuto[Option[String]].get)
+    assert(Some("foo") === (Json.parse("""{"s": "foo"}""") \ "s").validateAuto[Option[String]].get)
 
-    assert(JsSuccess(None) === Json.fromJson[Option[String]](Json.parse("""5""")))
-    assert(JsSuccess(None) === Json.fromJson[Option[String]](Json.parse("""{}""")))
+    assert(None === Json.fromJson[Option[String]](Json.parse("""5""")).get)
+    assert(None === Json.fromJson[Option[String]](Json.parse("""{}""")).get)
 
-    assert(JsSuccess(B(None)) === Json.fromJson[B](Json.parse("""{"s": {}}""")))
-    assert(JsSuccess(A("foo")) === Json.fromJson[A](Json.parse("""{"s": "foo"}""")))
-    assert(JsSuccess(B(Some("foo"))) === Json.fromJson[B](Json.parse("""{"s": "foo"}""")))
-    assert(JsSuccess(B(None)) === Json.fromJson[B](Json.parse("""{"s": null}""")))
-    assert(JsSuccess(B(None)) === Json.fromJson[B](Json.parse("""{}""")))
-    assert(JsSuccess(B(None)) === Json.fromJson[B](Json.parse("""5""")))
-    assert(JsSuccess(B(None)) === Json.fromJson[B](Json.parse("""null""")))
+    assert(B(None) === Json.fromJson[B](Json.parse("""{"s": {}}""")).get)
+    assert(A("foo") === Json.fromJson[A](Json.parse("""{"s": "foo"}""")).get)
+    assert(B(Some("foo")) === Json.fromJson[B](Json.parse("""{"s": "foo"}""")).get)
+    assert(B(None) === Json.fromJson[B](Json.parse("""{"s": null}""")).get)
+    assert(B(None) === Json.fromJson[B](Json.parse("""{}""")).get)
+    assert(B(None) === Json.fromJson[B](Json.parse("""5""")).get)
+    assert(B(None) === Json.fromJson[B](Json.parse("""null""")).get)
 
     assert(Json.fromJson[B2](Json.parse("""{"s": {}}""")).isInstanceOf[JsError])
     assert(A2("foo") === Json.fromJson[A2](Json.parse("""{"s": "foo"}""")).get)
     assert(B2(Some("foo")) === Json.fromJson[B2](Json.parse("""{"s": "foo"}""")).get)
-    assert(JsSuccess(B2(None)) === Json.fromJson[B2](Json.parse("""{"s": null}""")))
-    assert(JsSuccess(B2(None)) === Json.fromJson[B2](Json.parse("""{}""")))
-    assert(JsSuccess(B2(None)) === Json.fromJson[B2](Json.parse("""5""")))
-    assert(JsSuccess(B2(None)) === Json.fromJson[B2](Json.parse("""null""")))
+    assert(B2(None) === Json.fromJson[B2](Json.parse("""{"s": null}""")).get)
+    assert(B2(None) === Json.fromJson[B2](Json.parse("""{}""")).get)
+    assert(B2(None) === Json.fromJson[B2](Json.parse("""5""")).get)
+    assert(B2(None) === Json.fromJson[B2](Json.parse("""null""")).get)
 
-    assert(JsSuccess(Optional(None)) === Json.fromJson[Optional](Json.parse("""{}""")))
-    assert(JsSuccess(Optional(Some(Mandatory(List("test"))))) === Json.fromJson[Optional](Json.parse("""{"o":{"s":["test"]}}""")))
-    assert(JsSuccess(Optional(None)) === Json.fromJson[Optional](Json.parse("""{"o":{}}""")))
+    assert(Optional(None) === Json.fromJson[Optional](Json.parse("""{}""")).get)
+    assert(Optional(Some(Mandatory(List("test")))) === Json.fromJson[Optional](Json.parse("""{"o":{"s":["test"]}}""")).get)
+    assert(Optional(None) === Json.fromJson[Optional](Json.parse("""{"o":{}}""")).get)
     
-    assert(JsSuccess(Optional2(None)) === Json.fromJson[Optional2](Json.parse("""{}""")))
-    assert(JsSuccess(Optional2(Some(Mandatory2(List("test"))))) === Json.fromJson[Optional2](Json.parse("""{"o":{"s":["test"]}}""")))
-    assert(JsSuccess(Optional2(None)) === Json.fromJson[Optional2](Json.parse("""{"o":{}}""")))
+    assert(Optional2(None) === Json.fromJson[Optional2](Json.parse("""{}""")).get)
+    assert(Optional2(Some(Mandatory2(List("test")))) === Json.fromJson[Optional2](Json.parse("""{"o":{"s":["test"]}}""")).get)
+    assert(Optional2(None) === Json.fromJson[Optional2](Json.parse("""{"o":{}}""")).get)
 
-    assert(JsSuccess(ClassOuter(Nil)) === Json.fromJson[ClassOuter](Json.parse("""{"outer": []}""")))
-    assert(JsSuccess(ClassOuter2(Nil)) === Json.fromJson[ClassOuter2](Json.parse("""{"outer": []}""")))
+    assert(ClassOuter(Nil) === Json.fromJson[ClassOuter](Json.parse("""{"outer": []}""")).get)
+    assert(ClassOuter2(Nil) === Json.fromJson[ClassOuter2](Json.parse("""{"outer": []}""")).get)
   }
 
   test("test formatInline"){
     case class Foo(i: Int)
     implicit def fmt = Jsonx.formatInline[Foo]
     val f = Foo(1)
-    assert(JsSuccess(f) === Json.parse("1").validate[Foo])
-    assert(JsSuccess(f) === Json.toJson(f).validate[Foo])
+    assert(f === Json.parse("1").validate[Foo].get)
+    assert(f === Json.toJson(f).validate[Foo].get)
 
     implicit def fmt2 = Jsonx.formatInline[Bar]
     val b = new Bar(1)
-    assert(JsSuccess(b) === Json.parse("1").validate[Bar])
-    assert(JsSuccess(b) === Json.toJson(b).validate[Bar])
+    assert(b === Json.parse("1").validate[Bar].get)
+    assert(b === Json.toJson(b).validate[Bar].get)
   }
   case class DontInline(a: Int)
   object DontInline{
@@ -407,7 +408,7 @@ class JsonTests extends FunSuite{
       implicit def fmt3: Format[Foo] = fmt2    
       val json = Json.toJson( foo )
       assert(foo === json.as[Foo])
-      assert(JsSuccess(Some(foo)) === json.validateAuto[Option[Foo]])
+      assert(Some(foo) === json.validateAuto[Option[Foo]].get)
       val json2 = Json.toJson( foo2 )
       assert(foo2 === json2.as[Foo])
     }
