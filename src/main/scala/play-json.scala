@@ -113,27 +113,12 @@ object OptionValidationDispatcher{
 
 object `package`{
   implicit class JsLookupResultExtensions(res: JsLookupResult){
-    /**
-    properly validate Option and non-Option fields alike
-    */
+    /** properly validate Option and non-Option fields alike */
     def validateAuto[T](implicit helper: OptionValidationDispatcher[T]): JsResult[T] = helper.validate(res)
-    /**
-    Backport of >2.4.1 validateOpt as an extension method
-    */
-    def validateOpt[T](implicit reads: Reads[T]): JsResult[Option[T]] = res match {
-      case JsUndefined() => JsSuccess(None.asInstanceOf[Option[T]])
-      case JsDefined(a) => Reads.optionWithNull(reads).reads(a)
-    }
   }
   implicit class JsValueExtensions(res: JsValue){
-    /**
-    properly validate Option and non-Option fields alike
-    */
-    def validateAuto[T:OptionValidationDispatcher]: JsResult[T] = JsDefined(res).validateAuto[T]
-    /**
-    Backport of >2.4.1 validateOpt as an extension method
-    */
-    def validateOpt[T](implicit reads: Reads[T]): JsResult[Option[T]] = JsDefined(res).validateOpt[T]
+    /** properly validate Option and non-Option fields alike */
+    def validateAuto[T](implicit helper: OptionValidationDispatcher[T]): JsResult[T] = JsDefined(res).validateAuto[T]
   }
 }
 
