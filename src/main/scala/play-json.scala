@@ -183,7 +183,7 @@ private[json] class Macros(val c: blackbox.Context){
     if(tpe.companion == NoType){
       ListMap()
     } else {    
-      ListMap( tpe.companion.member( TermName( "apply" ) ).asMethod.paramLists.flatten.zipWithIndex.map {
+      ListMap( tpe.companion.member( TermName( "apply" ) ).asTerm.alternatives.find(_.isSynthetic).get.asMethod.paramLists.flatten.zipWithIndex.map {
         case ( field, i ) =>
           (
             field.name.toTermName.decodedName.toString,

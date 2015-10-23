@@ -32,6 +32,7 @@ object Adt{
   final case class Y(i: Int, s: String) extends SomeAdt
   object Y{
     implicit def jsonFormat = Jsonx.formatCaseClass[Y]
+    def apply = "making sure overloaded apply doesn't break"
   }
 }
 object AdtWithEmptyLeafs{
