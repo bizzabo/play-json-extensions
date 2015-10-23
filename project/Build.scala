@@ -6,7 +6,7 @@ object MyBuild extends Build{
   val projectName = "play-json-extensions"
   lazy val aRootProject = Project(id = projectName, base = file("."),
     settings = Seq(
-      version := "0.5.0",
+      version := "0.6.0",
       name := projectName,
       scalaVersion := "2.11.7",
       description := "Slick-style, cross-library, untyped mongo query builder for Scala",

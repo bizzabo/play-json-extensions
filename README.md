@@ -3,9 +3,9 @@ Play-Json extensions
 
 ### Sbt play-json >= 2.4
 
-    libraryDependencies += "org.cvogt" %% "play-json-extensions" % "0.5.0"
+    libraryDependencies += "org.cvogt" %% "play-json-extensions" % "0.6.0"
 
-    // if you were using formatAdt or InvariantFormat you may want to upgrade to 0.4.0 first and then to 0.5.0
+    // if you were using formatAdt or InvariantFormat you may want to upgrade to 0.4.0 first and then to 0.6.0
     // last version for play-json 2.3 was 0.2
 
 ### De-/Serialize case classes of arbitrary size (23+ fields allowed)
@@ -77,8 +77,8 @@ Play-Json extensions
       implicit def jsonFormat: Format[X] = Jsonx.formatCaseClass[X]
     }
     object SomeAdt{
-      import SingletonEncoder.simpleName         // required for formatSingleton
-      import org.cvogt.play.json.implicits.formatSingleton // required if trait has object children
+      import org.cvogt.play.json.SingletonEncoder.simpleName  // required for formatSingleton
+      import org.cvogt.play.json.implicits.formatSingleton    // required if trait has object children
       implicit def jsonFormat: Format[SomeAdt] = Jsonx.formatSealed[SomeAdt]
     }
 
