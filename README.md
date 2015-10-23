@@ -38,7 +38,7 @@ Play-Json extensions
 
 #### deserialization uses default values
   case class Bar(s: String, i: Int = 6)
-  implicit def format = Jsonx.formatCaseClass[Bar]
+  implicit def format = Jsonx.formatCaseClassUseDefaults[Bar]
   assert(Bar("asd",6) == Json.parse("""{"s":"asd"}""").validate[Bar].get)
   
 #### De-/Serialize tuples
