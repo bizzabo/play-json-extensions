@@ -23,7 +23,7 @@ Play-Json extensions
 
 #### Create explicit formatter
     import org.cvogt.play.json.Jsonx
-    implicit def jsonFormat = Jsonx.formatCaseClass[Foo]
+    implicit lazy val jsonFormat = Jsonx.formatCaseClass[Foo]
 
     // if your case class uses Option make sure you import
     // one of the below implicit Option Reads to avoid
@@ -38,7 +38,7 @@ Play-Json extensions
 
 #### deserialization uses default values
   case class Bar(s: String, i: Int = 6)
-  implicit def format = Jsonx.formatCaseClassUseDefaults[Bar]
+  implicit lazy val format = Jsonx.formatCaseClassUseDefaults[Bar]
   assert(Bar("asd",6) == Json.parse("""{"s":"asd"}""").validate[Bar].get)
   
 #### De-/Serialize tuples
@@ -74,12 +74,12 @@ Play-Json extensions
     case object A extends SomeAdt
     final case class X(i: Int, s: String) extends SomeAdt
     object X{
-      implicit def jsonFormat: Format[X] = Jsonx.formatCaseClass[X]
+      implicit lazy val jsonFormat: Format[X] = Jsonx.formatCaseClass[X]
     }
     object SomeAdt{
       import org.cvogt.play.json.SingletonEncoder.simpleName  // required for formatSingleton
       import org.cvogt.play.json.implicits.formatSingleton    // required if trait has object children
-      implicit def jsonFormat: Format[SomeAdt] = Jsonx.formatSealed[SomeAdt]
+      implicit lazy val jsonFormat: Format[SomeAdt] = Jsonx.formatSealed[SomeAdt]
     }
 
     Json.parse("""A""").as[SomeAdt] == A
@@ -101,7 +101,7 @@ Play-Json extensions
     val fmt2: Format[Foo] = Jsonx.formatAuto[Foo] // not implicit to avoid infinite recursion
 
     {
-      implicit def fmt3: Format[Foo] = fmt2    
+      implicit lazy val fmt3: Format[Foo] = fmt2    
       val json = Json.toJson( foo )
       assert(foo === json.as[Foo])
       val json2 = Json.toJson( foo2 )
