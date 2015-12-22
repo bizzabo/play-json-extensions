@@ -292,11 +292,14 @@ private[json] class Macros(val c: blackbox.Context){
     val (results,mkResults) = caseClassFieldsTypes(T).map{
       case (k,t) =>
         val name = TermName(c.freshName)
-        val result = q"(json \ $k).validateAuto[$t].repath(path)"
+        val path = q"(json \ $k)"
+        val result = q"bpath.validateAuto[$t].repath(path)"
+        // FIXME: the below needs cleanup
         (name, q"""val $name: JsResult[$t] = {
+            val bpath = $path
             val path = (JsPath() \ $k)
             val resolved = path.asSingleJsResult(json)
-            val result = ${orDefault(result,k)}
+            val result = if(bpath.isInstanceOf[JsDefined]) ${result} else ${orDefault(result,k)}
             (resolved,result) match {
               case (_,result:JsSuccess[_]) => result
               case _ => resolved.flatMap(_ => result)

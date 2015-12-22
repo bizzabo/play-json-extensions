@@ -429,6 +429,22 @@ class JsonTests extends FunSuite{
     assert("""{"a":5}""" ===  Json.toJson( DontInline(5) )(fmt3).toString)
 
   }
+  case class CaseClassWithDefaults(foobar: Int = 5)
+  test("defaults error test"){
+
+    implicit val childFormat = Jsonx.formatCaseClassUseDefaults[CaseClassWithDefaults]
+  
+    val string = """{ "foobar" : 10 } """
+    val string2 = """{ "foobar": "test"} """
+    val string3 = """{} """
+    val json = Json.parse( string )
+    val json2 = Json.parse( string2 )
+    val json3 = Json.parse( string3 )
+    assert( json.validateAuto[CaseClassWithDefaults] === JsSuccess(CaseClassWithDefaults(10)) )
+    assert( json2.validateAuto[CaseClassWithDefaults].isInstanceOf[JsError] )
+    assert( json3.validateAuto[CaseClassWithDefaults] === JsSuccess(CaseClassWithDefaults(5)) )
+  }
+
   FailureTest // needed to initialize object
 }
 class Bar(val i: Int) extends AnyVal
