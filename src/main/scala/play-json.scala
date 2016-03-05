@@ -444,6 +444,82 @@ This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can onl
     t
   }
 
+  def formatHinted[T: c.WeakTypeTag](enclosed: Tree): Tree = {
+    assertClass[T]()
+    val T = c.weakTypeOf[T]
+
+    val t =
+      q"""
+      {
+        import $pjson._
+        import $pkg._
+        new Format[$T] {
+          private val _delegateFormat: Format[$T] = $enclosed
+          private val _hints: Hints = implicitly[Hints]
+
+          def reads(json: JsValue): JsResult[$T] = {
+            (json \ _hints.field).asOpt[String] match {
+              case Some(hint) if _hints.isHintForClass(hint, classOf[$T]) => _delegateFormat.reads(json)
+              case Some(unexpectedHint) => JsError(s"Cannot deserialize type [$${classOf[$T]}] from json with type-hint [$${unexpectedHint}]")
+              case None => JsError(s"Cannot deserialize type [$${classOf[$T]}] from json without a type-hint field [_hints.field]")
+            }
+          }
+
+          def writes(value: $T): JsValue = _delegateFormat.writes(value) match {
+            case obj: JsObject => obj + (_hints.field, JsString(_hints.hintFor(classOf[$T])))
+            case nonObj => throw new Exception(s"Cannot put type-hint to $${nonObj.getClass.getSimpleName} produced by Format["+${Literal(Constant(T.toString))}+"]. Hinting supported only for Formats that write JsObjects")
+          }
+        }
+      }
+      """
+//    debugMacro(t)
+    t
+  }
+
+  def formatHintedSealed[T: c.WeakTypeTag]: Tree = {
+    assertSealedAbstract[T]
+
+    val T = c.weakTypeOf[T]
+    val subs = T.typeSymbol.asClass.knownDirectSubclasses.toVector
+    if (subs.isEmpty)
+      c.error(c.enclosingPosition,s"""
+No child classes found for $T. If there clearly are child classes,
+try moving the call into a separate file, a sibbling package, a separate sbt sub project or else.
+This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can only be avoided by manually moving the call.""")
+
+    val writes = subs.map {
+      sym => cq"""obj: $sym => Json.toJson[$sym](obj)(implicitly[Format[$sym]])"""
+    }
+
+    val reads = subs.map {
+      sym => cq"""Some(hint: String) if _hints.isHintForClass(hint, classOf[$sym]) => json.validateAuto[$sym]"""
+    }
+
+    val t =
+      q"""
+      {
+        import $pjson._
+        import $pkg._
+        new Format[$T] {
+          private val _hints: Hints = implicitly[Hints]
+
+          def writes(obj: $T): JsValue = obj match {
+            case ..$writes
+            case _ => throw new Exception("formatHintedSealed found unexpected object of type "+${Literal(Constant(T.toString))}+s": $${obj.getClass}$$obj")
+          }
+
+          def reads(json: JsValue): JsResult[$T] = (json \ _hints.field).asOpt[String] match {
+            case ..$reads
+            case Some(unexpectedHint) => JsError(s"Cannot deserialize type [$${classOf[$T].getName}] from json with type-hint [$${unexpectedHint}]")
+            case None => JsError(s"Cannot deserialize type [$${classOf[$T].getName}] from json without a type-hint field [$${_hints.field}]")
+          }
+        }
+      }
+      """
+//    debugMacro(t)
+    t
+  }
+
   protected def isCaseClass(tpe: Type)
     = tpe.typeSymbol.isClass && tpe.typeSymbol.asClass.isCaseClass
 
@@ -532,4 +608,40 @@ object Jsonx{
   */
   def formatAuto[T]: Format[T]
     = macro Macros.formatAuto[T]
+
+
+  def formatHinted[T](enclosed: Format[T]): Format[T] = macro Macros.formatHinted[T]
+
+  def formatHintedSealed[T]: Format[T] = macro Macros.formatHintedSealed[T]
+
+}
+
+@implicitNotFound("""could not find implicit value of org.cvogt.play.json.Hints . Make sure instance of Hints is available when using formatHinted or formatSealedHinted""")
+trait Hints {
+  def field: String
+  def hintFor(clazz: Class[_]): String
+  def isHintForClass(hint: String, cls: Class[_]): Boolean
+}
+
+object Hints {
+  /** Case-insensitive case-preserving hints based on short class name */
+  case class CaseInsensitivePreservingShortHints(val field: String) extends Hints {
+    def hintFor(cls: Class[_]): String = cls.getSimpleName
+
+    def isHintForClass(hint: String, cls: Class[_]): Boolean = cls.getSimpleName.equalsIgnoreCase(hint)
+  }
+
+  /** Case-insensitive case-smashing hints based on short class name */
+  case class CaseInsensitiveSmashingShortHints(val field: String, val smash: String => String) extends Hints {
+    def hintFor(cls: Class[_]): String = smash(cls.getSimpleName)
+
+    def isHintForClass(hint: String, cls: Class[_]): Boolean = smash(cls.getSimpleName).equals(smash(hint))
+  }
+
+  /** Case-sensitive hints based on short class name */
+  case class CaseSensitiveShortHints(val field: String) extends Hints {
+    def hintFor(cls: Class[_]): String = cls.getSimpleName
+
+    def isHintForClass(hint: String, cls: Class[_]): Boolean = cls.getSimpleName.equals(hint)
+  }
 }
