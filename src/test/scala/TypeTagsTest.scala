@@ -3,7 +3,7 @@ package org.cvogt.test.play.json
 import org.scalatest.FunSuite
 
 import play.api.libs.json.Json
-import org.cvogt.play.json.{Jsonx, Hints}
+import org.cvogt.play.json.{Jsonx, Tags}
 
 sealed trait ApiRequest
 case class Withdraw(amount: BigDecimal) extends ApiRequest
@@ -11,14 +11,14 @@ case class Deposit(amount: BigDecimal) extends ApiRequest
 case class Batch(requests: List[ApiRequest])
 
 
-class TypeHintsTest extends FunSuite {
+class TypeTagsTest extends FunSuite {
 
   object ApiFormats {
-    implicit val hints = Hints.CaseInsensitivePreservingShortHints("_type")
-    implicit val depositFmt = Jsonx.formatHinted(Json.format[Deposit])
-    implicit val withdrawFmt = Jsonx.formatHinted(Json.format[Withdraw])
+    implicit val tags = Tags.CaseInsensitivePreservingShortTags("_type")
+    implicit val depositFmt = Jsonx.formatTagged(Json.format[Deposit])
+    implicit val withdrawFmt = Jsonx.formatTagged(Json.format[Withdraw])
   }
-  test("json formatHinted") {
+  test("json formatTagged") {
     import ApiFormats._
 
     val deposit = Deposit(99.9)
@@ -35,12 +35,12 @@ class TypeHintsTest extends FunSuite {
 
   object RootApiFormats {
     import ApiFormats._
-    implicit val hints = Hints.CaseInsensitivePreservingShortHints("_type")
-    implicit val apifmt = Jsonx.formatHintedSealed[ApiRequest]
+    implicit val tags = Tags.CaseInsensitivePreservingShortTags("_type")
+    implicit val apifmt = Jsonx.formatSealedTagged[ApiRequest]
     implicit val batchfmt = Json.format[Batch]
   }
 
-  test("json formatHintedSealed") {
+  test("json formatSealedTagged") {
     import RootApiFormats._
     val deposit = Deposit(20)
     val withdraw = Withdraw(10)

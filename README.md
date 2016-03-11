@@ -69,7 +69,7 @@ Play-Json extensions
     json.validateOpt[String] == JsResult(None) // manual alternative (provided here, built-into play-json >= 2.4.2)
     
 #### automatic formatting of sealed traits, delegating to formatters of the subclasses
-#### formatSealed uses orElse of subclass Reads in random order, careful in case of ambiguities of field-class correspondances
+#### formatSealed uses orElse of subclass Reads in random order, careful in case of ambiguities of field-class correspondences
     sealed trait SomeAdt
     case object A extends SomeAdt
     final case class X(i: Int, s: String) extends SomeAdt
@@ -86,6 +86,35 @@ Play-Json extensions
     Json.parse("""{"i": 5, "s":"foo", "type": "X"}""").as[SomeAdt] == X(5,"foo")
 
 ### experimental features (will change)
+
+#### Serialization of polymorphic types with tags
+To overcome ambiguities when using `formatSealed` one option is to use type-tags.
+`formatTagged` adds type-tag field during serialization and relies on this field during deserialization.
+`formatSealedTagged` also inspects type-tag information to choose correct child Format.
+
+    sealed trait ApiRequest
+    case class Withdraw(amount: BigDecimal) extends ApiRequest
+    case class Deposit(amount: BigDecimal) extends ApiRequest
+
+    object ApiRequest {
+      import play.api.libs.json.Json
+      import org.cvogt.play.json.{Jsonx, Tags}
+
+      // Define tagging strategy
+      implicit val tags = Tags.CaseInsensitivePreservingShortTags(field = "_type")
+
+      // Wrap standard formats with tagged ones
+      implicit private val depositFmt = Jsonx.formatTagged(Json.format[Deposit])
+      implicit private val withdrawFmt = Jsonx.formatTagged(Json.format[Withdraw])
+      implicit val apiFmt = Jsonx.formatSealedTagged[ApiRequest]
+    }
+
+    val deposit = Deposit(10)
+    val withdraw = Withdraw(10)
+    assert(Json.parse(s"""{"_type": "withdraw", "amount": 10.0}""").as[ApiRequest] === withdraw)
+    assert(Json.parse(s"""{"_type": "deposit", "amount": 10.0}""").as[ApiRequest] === deposit)
+
+
 #### Serialization nirvana - formatAuto FULLY automatic de-serializer (note: needs more optimized internal implementation)
 
     sealed trait SomeAdt

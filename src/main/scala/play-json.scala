@@ -444,7 +444,7 @@ This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can onl
     t
   }
 
-  def formatHinted[T: c.WeakTypeTag](enclosed: Tree): Tree = {
+  def formatTagged[T: c.WeakTypeTag](enclosed: Tree)(tags: Tree): Tree = {
     assertClass[T]()
     val T = c.weakTypeOf[T]
 
@@ -455,19 +455,19 @@ This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can onl
         import $pkg._
         new Format[$T] {
           private val _delegateFormat: Format[$T] = $enclosed
-          private val _hints: Hints = implicitly[Hints]
+          private val _tags: Tags = implicitly[Tags]
 
           def reads(json: JsValue): JsResult[$T] = {
-            (json \ _hints.field).asOpt[String] match {
-              case Some(hint) if _hints.isHintForClass(hint, classOf[$T]) => _delegateFormat.reads(json)
-              case Some(unexpectedHint) => JsError(s"Cannot deserialize type [$${classOf[$T]}] from json with type-hint [$${unexpectedHint}]")
-              case None => JsError(s"Cannot deserialize type [$${classOf[$T]}] from json without a type-hint field [_hints.field]")
+            (json \ _tags.field).asOpt[String] match {
+              case Some(tag) if _tags.isTagForClass(tag, classOf[$T]) => _delegateFormat.reads(json)
+              case Some(unexpectedTag) => JsError(s"Cannot deserialize type [$${classOf[$T]}] from json with type-tag [$${unexpectedTag}]")
+              case None => JsError(s"Cannot deserialize type [$${classOf[$T]}] from json without a type-tag field [_tags.field]")
             }
           }
 
           def writes(value: $T): JsValue = _delegateFormat.writes(value) match {
-            case obj: JsObject => obj + (_hints.field, JsString(_hints.hintFor(classOf[$T])))
-            case nonObj => throw new Exception(s"Cannot put type-hint to $${nonObj.getClass.getSimpleName} produced by Format["+${Literal(Constant(T.toString))}+"]. Hinting supported only for Formats that write JsObjects")
+            case obj: JsObject => obj + (_tags.field, JsString(_tags.tagFor(classOf[$T])))
+            case nonObj => throw new Exception(s"Cannot put type-tag to $${nonObj.getClass.getSimpleName} produced by Format["+${Literal(Constant(T.toString))}+"]. Tagging supported only for Formats that write JsObjects")
           }
         }
       }
@@ -476,7 +476,7 @@ This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can onl
     t
   }
 
-  def formatHintedSealed[T: c.WeakTypeTag]: Tree = {
+  def formatSealedTagged[T: c.WeakTypeTag](tags: Tree): Tree = {
     assertSealedAbstract[T]
 
     val T = c.weakTypeOf[T]
@@ -492,7 +492,7 @@ This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can onl
     }
 
     val reads = subs.map {
-      sym => cq"""Some(hint: String) if _hints.isHintForClass(hint, classOf[$sym]) => json.validateAuto[$sym]"""
+      sym => cq"""Some(tag: String) if _tags.isTagForClass(tag, classOf[$sym]) => json.validateAuto[$sym]"""
     }
 
     val t =
@@ -501,17 +501,18 @@ This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can onl
         import $pjson._
         import $pkg._
         new Format[$T] {
-          private val _hints: Hints = implicitly[Hints]
+          ${verifyKnownDirectSubclassesPostTyper(T: Type, s"formatSealedTagged[$T]")}
+          private val _tags: Tags = implicitly[Tags]
 
           def writes(obj: $T): JsValue = obj match {
             case ..$writes
-            case _ => throw new Exception("formatHintedSealed found unexpected object of type "+${Literal(Constant(T.toString))}+s": $${obj.getClass}$$obj")
+            case _ => throw new Exception("formatSealedTagged found unexpected object of type "+${Literal(Constant(T.toString))}+s": $${obj.getClass}$$obj")
           }
 
-          def reads(json: JsValue): JsResult[$T] = (json \ _hints.field).asOpt[String] match {
+          def reads(json: JsValue): JsResult[$T] = (json \ _tags.field).asOpt[String] match {
             case ..$reads
-            case Some(unexpectedHint) => JsError(s"Cannot deserialize type [$${classOf[$T].getName}] from json with type-hint [$${unexpectedHint}]")
-            case None => JsError(s"Cannot deserialize type [$${classOf[$T].getName}] from json without a type-hint field [$${_hints.field}]")
+            case Some(unexpectedTag) => JsError(s"Cannot deserialize type [$${classOf[$T].getName}] from json with type-tag [$${unexpectedTag}]")
+            case None => JsError(s"Cannot deserialize type [$${classOf[$T].getName}] from json without a type-tag field [$${_tags.field}]")
           }
         }
       }
@@ -610,38 +611,46 @@ object Jsonx{
     = macro Macros.formatAuto[T]
 
 
-  def formatHinted[T](enclosed: Format[T]): Format[T] = macro Macros.formatHinted[T]
+  /**
+  Wraps given format and adds type tag field during writing and inspects tag filed during reading.
+  Used for de/serializing of polymorphic types.
+  Tagging strategy is defined implicitly with [[org.cvogt.play.json.Tags]]
+  */
+  def formatTagged[T](enclosed: Format[T])(implicit tags: Tags): Format[T] = macro Macros.formatTagged[T]
 
-  def formatHintedSealed[T]: Format[T] = macro Macros.formatHintedSealed[T]
+  /**
+  Generates a PlayJson Format[T] for a sealed trait that dispatches to formats of it's concrete subclasses.
+  Unlike `formatSealed` this variant relies on type-tags and thus avoids ambiguities.
+  Tagging strategy is defined implicitly with [[org.cvogt.play.json.Tags]]
+  */
+  def formatSealedTagged[T](implicit tags: Tags): Format[T] = macro Macros.formatSealedTagged[T]
 
 }
 
-@implicitNotFound("""could not find implicit value of org.cvogt.play.json.Hints . Make sure instance of Hints is available when using formatHinted or formatSealedHinted""")
-trait Hints {
+@implicitNotFound("""could not find implicit value of org.cvogt.play.json.Tags. Make sure instance of Tags is available when using formatTagged or formatSealedTagged""")
+trait Tags {
   def field: String
-  def hintFor(clazz: Class[_]): String
-  def isHintForClass(hint: String, cls: Class[_]): Boolean
+  def tagFor(clazz: Class[_]): String
+  def isTagForClass(tag: String, cls: Class[_]): Boolean
 }
 
-object Hints {
-  /** Case-insensitive case-preserving hints based on short class name */
-  case class CaseInsensitivePreservingShortHints(val field: String) extends Hints {
-    def hintFor(cls: Class[_]): String = cls.getSimpleName
+object Tags {
 
-    def isHintForClass(hint: String, cls: Class[_]): Boolean = cls.getSimpleName.equalsIgnoreCase(hint)
+  /** Case-insensitive case-preserving type-tags derived from short class name */
+  case class CaseInsensitivePreservingShortTags(val field: String) extends Tags {
+    def tagFor(cls: Class[_]): String = cls.getSimpleName
+    def isTagForClass(tag: String, cls: Class[_]): Boolean = cls.getSimpleName.equalsIgnoreCase(tag)
   }
 
-  /** Case-insensitive case-smashing hints based on short class name */
-  case class CaseInsensitiveSmashingShortHints(val field: String, val smash: String => String) extends Hints {
-    def hintFor(cls: Class[_]): String = smash(cls.getSimpleName)
-
-    def isHintForClass(hint: String, cls: Class[_]): Boolean = smash(cls.getSimpleName).equals(smash(hint))
+  /** Case-insensitive case-smashing type-tags derived from short class name */
+  case class CaseInsensitiveSmashingShortTags(val field: String, val smash: String => String) extends Tags {
+    def tagFor(cls: Class[_]): String = smash(cls.getSimpleName)
+    def isTagForClass(tag: String, cls: Class[_]): Boolean = smash(cls.getSimpleName).equals(smash(tag))
   }
 
-  /** Case-sensitive hints based on short class name */
-  case class CaseSensitiveShortHints(val field: String) extends Hints {
-    def hintFor(cls: Class[_]): String = cls.getSimpleName
-
-    def isHintForClass(hint: String, cls: Class[_]): Boolean = cls.getSimpleName.equals(hint)
+  /** Case-sensitive type-tags derived from short class name */
+  case class CaseSensitiveShortTags(val field: String) extends Tags {
+    def tagFor(cls: Class[_]): String = cls.getSimpleName
+    def isTagForClass(tag: String, cls: Class[_]): Boolean = cls.getSimpleName.equals(tag)
   }
 }
