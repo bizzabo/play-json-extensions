@@ -466,7 +466,7 @@ This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can onl
           }
 
           def writes(value: $T): JsValue = _delegateFormat.writes(value) match {
-            case obj: JsObject => obj + (_tags.field, JsString(_tags.tagFor(classOf[$T])))
+            case obj: JsObject => obj ++ JsObject(Map(_tags.field -> JsString(_tags.tagFor(classOf[$T]))))
             case nonObj => throw new Exception(s"Cannot put type-tag to $${nonObj.getClass.getSimpleName} produced by Format["+${Literal(Constant(T.toString))}+"]. Tagging supported only for Formats that write JsObjects")
           }
         }
@@ -488,7 +488,11 @@ try moving the call into a separate file, a sibbling package, a separate sbt sub
 This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can only be avoided by manually moving the call.""")
 
     val writes = subs.map {
-      sym => cq"""obj: $sym => Json.toJson[$sym](obj)(implicitly[Format[$sym]])"""
+      sym =>
+        cq"""obj: $sym => implicitly[Format[$sym]].writes(obj) match {
+              case _o: JsObject => _o ++ JsObject(Map(_tags.field -> JsString(_tags.tagFor(classOf[$sym]))))
+              case _ => throw new Exception("Cannot put type-tag to Format[" + classOf[$sym].getName + "]. Tagging supported only for Formats that write JsObjects")
+             }"""
     }
 
     val reads = subs.map {
@@ -517,7 +521,7 @@ This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can onl
         }
       }
       """
-//    debugMacro(t)
+    //debugMacro(t)
     t
   }
 

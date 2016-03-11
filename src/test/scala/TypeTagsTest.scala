@@ -14,7 +14,7 @@ case class Batch(requests: List[ApiRequest])
 class TypeTagsTest extends FunSuite {
 
   object ApiFormats {
-    implicit val tags = Tags.CaseInsensitivePreservingShortTags("_type")
+    private implicit val tags = Tags.CaseInsensitivePreservingShortTags("_type")
     implicit val depositFmt = Jsonx.formatTagged(Json.format[Deposit])
     implicit val withdrawFmt = Jsonx.formatTagged(Json.format[Withdraw])
   }
@@ -32,10 +32,23 @@ class TypeTagsTest extends FunSuite {
     assert(Json.parse(s"""{"_type": "withdraw", "amount": 10.0}""").as[Withdraw] === withdraw)
   }
 
+  test("formatTagged should fail if enclosing format produces non JsObjects") {
+    case class Counter(count: Int)
+
+    implicit val tags = Tags.CaseInsensitivePreservingShortTags("_type")
+    implicit val taggedFmt = Jsonx.formatTagged(Jsonx.formatInline[Counter])
+
+    val errorMessage = intercept[Exception] { Json.toJson(Counter(50)) }.getMessage
+    assert(errorMessage.startsWith("Cannot put type-tag"))
+  }
+
 
   object RootApiFormats {
-    import ApiFormats._
-    implicit val tags = Tags.CaseInsensitivePreservingShortTags("_type")
+    private implicit val tags = Tags.CaseInsensitivePreservingShortTags("_type")
+
+    private implicit val depositFmt = Json.format[Deposit]
+    private implicit val withdrawFmt = Json.format[Withdraw]
+
     implicit val apifmt = Jsonx.formatSealedTagged[ApiRequest]
     implicit val batchfmt = Json.format[Batch]
   }
