@@ -44,16 +44,13 @@ class TypeTagsTest extends FunSuite {
 
 
   object RootApiFormats {
-    private implicit val tags = Tags.CaseInsensitivePreservingShortTags("_type")
+    import ApiFormats._
 
-    private implicit val depositFmt = Json.format[Deposit]
-    private implicit val withdrawFmt = Json.format[Withdraw]
-
-    implicit val apifmt = Jsonx.formatSealedTagged[ApiRequest]
+    implicit val apifmt = Jsonx.formatSealed[ApiRequest]
     implicit val batchfmt = Json.format[Batch]
   }
 
-  test("json formatSealedTagged") {
+  test("json formatSealed with formatTagged") {
     import RootApiFormats._
     val deposit = Deposit(20)
     val withdraw = Withdraw(10)

@@ -455,7 +455,7 @@ This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can onl
         import $pkg._
         new Format[$T] {
           private val _delegateFormat: Format[$T] = $enclosed
-          private val _tags: Tags = implicitly[Tags]
+          private val _tags: Tags = $tags
 
           def reads(json: JsValue): JsResult[$T] = {
             (json \ _tags.field).asOpt[String] match {
@@ -473,55 +473,6 @@ This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can onl
       }
       """
 //    debugMacro(t)
-    t
-  }
-
-  def formatSealedTagged[T: c.WeakTypeTag](tags: Tree): Tree = {
-    assertSealedAbstract[T]
-
-    val T = c.weakTypeOf[T]
-    val subs = T.typeSymbol.asClass.knownDirectSubclasses.toVector
-    if (subs.isEmpty)
-      c.error(c.enclosingPosition,s"""
-No child classes found for $T. If there clearly are child classes,
-try moving the call into a separate file, a sibbling package, a separate sbt sub project or else.
-This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can only be avoided by manually moving the call.""")
-
-    val writes = subs.map {
-      sym =>
-        cq"""obj: $sym => implicitly[Format[$sym]].writes(obj) match {
-              case _o: JsObject => _o ++ JsObject(Map(_tags.field -> JsString(_tags.tagFor(classOf[$sym]))))
-              case _ => throw new Exception("Cannot put type-tag to Format[" + classOf[$sym].getName + "]. Tagging supported only for Formats that write JsObjects")
-             }"""
-    }
-
-    val reads = subs.map {
-      sym => cq"""Some(tag: String) if _tags.isTagForClass(tag, classOf[$sym]) => json.validateAuto[$sym]"""
-    }
-
-    val t =
-      q"""
-      {
-        import $pjson._
-        import $pkg._
-        new Format[$T] {
-          ${verifyKnownDirectSubclassesPostTyper(T: Type, s"formatSealedTagged[$T]")}
-          private val _tags: Tags = implicitly[Tags]
-
-          def writes(obj: $T): JsValue = obj match {
-            case ..$writes
-            case _ => throw new Exception("formatSealedTagged found unexpected object of type "+${Literal(Constant(T.toString))}+s": $${obj.getClass}$$obj")
-          }
-
-          def reads(json: JsValue): JsResult[$T] = (json \ _tags.field).asOpt[String] match {
-            case ..$reads
-            case Some(unexpectedTag) => JsError(s"Cannot deserialize type [$${classOf[$T].getName}] from json with type-tag [$${unexpectedTag}]")
-            case None => JsError(s"Cannot deserialize type [$${classOf[$T].getName}] from json without a type-tag field [$${_tags.field}]")
-          }
-        }
-      }
-      """
-    //debugMacro(t)
     t
   }
 
@@ -618,20 +569,13 @@ object Jsonx{
   /**
   Wraps given format and adds type tag field during writing and inspects tag filed during reading.
   Used for de/serializing of polymorphic types.
-  Tagging strategy is defined implicitly with [[org.cvogt.play.json.Tags]]
+  Tagging strategy is defined implicitly with an instance of [[org.cvogt.play.json.Tags]]
   */
   def formatTagged[T](enclosed: Format[T])(implicit tags: Tags): Format[T] = macro Macros.formatTagged[T]
 
-  /**
-  Generates a PlayJson Format[T] for a sealed trait that dispatches to formats of it's concrete subclasses.
-  Unlike `formatSealed` this variant relies on type-tags and thus avoids ambiguities.
-  Tagging strategy is defined implicitly with [[org.cvogt.play.json.Tags]]
-  */
-  def formatSealedTagged[T](implicit tags: Tags): Format[T] = macro Macros.formatSealedTagged[T]
-
 }
 
-@implicitNotFound("""could not find implicit value of org.cvogt.play.json.Tags. Make sure instance of Tags is available when using formatTagged or formatSealedTagged""")
+@implicitNotFound("""could not find implicit value of org.cvogt.play.json.Tags. Make sure instance of Tags is available when using formatTagged""")
 trait Tags {
   def field: String
   def tagFor(clazz: Class[_]): String

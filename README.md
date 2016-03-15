@@ -90,7 +90,6 @@ Play-Json extensions
 #### Serialization of polymorphic types with tags
 To overcome ambiguities when using `formatSealed` one option is to use type-tags.
 `formatTagged` adds type-tag field during serialization and relies on this field during deserialization.
-`formatSealedTagged` also inspects type-tag information to choose correct child Format.
 
     sealed trait ApiRequest
     case class Withdraw(amount: BigDecimal) extends ApiRequest
@@ -106,7 +105,8 @@ To overcome ambiguities when using `formatSealed` one option is to use type-tags
       // Wrap standard formats with tagged ones
       implicit private val depositFmt = Jsonx.formatTagged(Json.format[Deposit])
       implicit private val withdrawFmt = Jsonx.formatTagged(Json.format[Withdraw])
-      implicit val apiFmt = Jsonx.formatSealedTagged[ApiRequest]
+
+      implicit val apiFmt = Jsonx.formatSealed[ApiRequest]
     }
 
     val deposit = Deposit(10)
