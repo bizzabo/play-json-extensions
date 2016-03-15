@@ -466,8 +466,12 @@ This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can onl
           }
 
           def writes(value: $T): JsValue = _delegateFormat.writes(value) match {
-            case obj: JsObject => obj ++ JsObject(Map(_tags.field -> JsString(_tags.tagFor(classOf[$T]))))
-            case nonObj => throw new Exception(s"Cannot put type-tag to $${nonObj.getClass.getSimpleName} produced by Format["+${Literal(Constant(T.toString))}+"]. Tagging supported only for Formats that write JsObjects")
+            case obj: JsObject if obj.keys.contains(_tags.field) =>
+              throw new Exception(s"Cannot put type-tag to [$${classOf[$T]}]: member with name $${_tags.field} already exists")
+            case obj: JsObject =>
+              obj ++ JsObject(Map(_tags.field -> JsString(_tags.tagFor(classOf[$T]))))
+            case nonObj =>
+              throw new Exception(s"Cannot put type-tag to $${nonObj.getClass.getSimpleName} produced by Format["+${Literal(Constant(T.toString))}+"]. Tagging supported only for Formats that write JsObjects")
           }
         }
       }

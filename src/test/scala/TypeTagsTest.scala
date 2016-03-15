@@ -18,6 +18,7 @@ class TypeTagsTest extends FunSuite {
     implicit val depositFmt = Jsonx.formatTagged(Json.format[Deposit])
     implicit val withdrawFmt = Jsonx.formatTagged(Json.format[Withdraw])
   }
+
   test("json formatTagged") {
     import ApiFormats._
 
@@ -32,20 +33,8 @@ class TypeTagsTest extends FunSuite {
     assert(Json.parse(s"""{"_type": "withdraw", "amount": 10.0}""").as[Withdraw] === withdraw)
   }
 
-  test("formatTagged should fail if enclosing format produces non JsObjects") {
-    case class Counter(count: Int)
-
-    implicit val tags = Tags.CaseInsensitivePreservingShortTags("_type")
-    implicit val taggedFmt = Jsonx.formatTagged(Jsonx.formatInline[Counter])
-
-    val errorMessage = intercept[Exception] { Json.toJson(Counter(50)) }.getMessage
-    assert(errorMessage.startsWith("Cannot put type-tag"))
-  }
-
-
   object RootApiFormats {
     import ApiFormats._
-
     implicit val apifmt = Jsonx.formatSealed[ApiRequest]
     implicit val batchfmt = Json.format[Batch]
   }
@@ -56,11 +45,34 @@ class TypeTagsTest extends FunSuite {
     val withdraw = Withdraw(10)
     val batch = Batch(List(deposit, withdraw))
 
-    assert(((Json.toJson(batch) \ "requests")(0) \ "_type").as[String] === "Deposit")
-    assert(((Json.toJson(batch) \ "requests")(1) \ "_type").as[String] === "Withdraw")
+    assert(((Json.toJson(batch) \ "requests") (0) \ "_type").as[String] === "Deposit")
+    assert(((Json.toJson(batch) \ "requests") (1) \ "_type").as[String] === "Withdraw")
 
     assert(Json.parse(s"""{"_type": "withdraw", "amount": 10.0}""").as[ApiRequest] === withdraw)
     assert(Json.parse(s"""{"_type": "deposit", "amount": 20.0}""").as[ApiRequest] === deposit)
   }
 
+  test("formatTagged should fail if enclosing format produces non JsObjects") {
+    case class Counter(count: Int)
+
+    implicit val tags = Tags.CaseInsensitivePreservingShortTags("_type")
+    implicit val taggedFmt = Jsonx.formatTagged(Jsonx.formatInline[Counter])
+
+    val errorMessage = intercept[Exception] {
+      Json.toJson(Counter(50))
+    }.getMessage
+    assert(errorMessage.startsWith("Cannot put type-tag"))
+  }
+
+  test("formatTagged should fail if enclosing format has member named as to type-tag field") {
+    case class User(name: String, login: String)
+
+    implicit val tags = Tags.CaseSensitiveShortTags("name")
+    implicit val taggedFmt = Jsonx.formatTagged(Jsonx.formatCaseClass[User])
+
+    val errorMessage = intercept[Exception] {
+      Json.toJson(User("user", "login"))
+    }.getMessage
+    assert(errorMessage.startsWith("Cannot put type-tag"))
+  }
 }
