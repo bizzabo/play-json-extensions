@@ -352,7 +352,7 @@ private[json] class Macros(val c: blackbox.Context){
       c.error(c.macroApplication.pos,
 s"""macro call $macroCall happend in a place, where typechecking of $T hasn't been completed yet.
 Completion is required in order to find all direct subclasses.
-Try moving the call into a separate file, a sibbling package, a separate sbt sub project or else.
+Try moving the call lower in the file, into a separate file, a sibbling package, a separate sbt sub project or else.
 This is caused by https://issues.scala-lang.org/browse/SI-7046 and can only be avoided by manually moving the call.
 """
       )
