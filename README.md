@@ -37,9 +37,9 @@ Play-Json extensions
     assert(foo == json.as[Foo])
 
 #### deserialization uses default values
-  case class Bar(s: String, i: Int = 6)
-  implicit lazy val format = Jsonx.formatCaseClassUseDefaults[Bar]
-  assert(Bar("asd",6) == Json.parse("""{"s":"asd"}""").validate[Bar].get)
+    case class Bar(s: String, i: Int = 6)
+    implicit lazy val format = Jsonx.formatCaseClassUseDefaults[Bar]
+    assert(Bar("asd",6) == Json.parse("""{"s":"asd"}""").validate[Bar].get)
   
 #### De-/Serialize tuples
     import org.cvogt.play.json.tuples._
