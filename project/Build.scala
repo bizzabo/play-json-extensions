@@ -6,7 +6,7 @@ object MyBuild extends Build{
   val projectName = "play-json-extensions"
   lazy val aRootProject = Project(id = projectName, base = file("."),
     settings = Seq(
-      version := "0.7.0",
+      version := "0.7.1",
       name := projectName,
       scalaVersion := "2.11.7",
       description := "Additional type classes for the play-json serialization library",

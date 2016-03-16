@@ -423,6 +423,9 @@ This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can onl
     val reads = subs.map{
       sym => q"""json.validateAuto[$sym]"""
     }.reduce( (l,r) => q"$l orElse $r" )
+
+    val rootName = Literal(Constant(T.toString))
+    val subNames = Literal(Constant(subs.map(_.fullName).mkString(", ")))
     
     val t = q"""
       {
@@ -430,7 +433,7 @@ This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can onl
         import $pkg._
         new Format[$T]{
           ${verifyKnownDirectSubclassesPostTyper(T: Type, s"formatSealed[$T]")}
-          def reads(json: JsValue) = $reads
+          def reads(json: JsValue) = $reads orElse JsError("Could not deserialize to any of the subtypes of "+ $rootName +". Tried: "+ $subNames)
           def writes(obj: $T) = {
             obj match {
               case ..$writes
