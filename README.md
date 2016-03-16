@@ -1,9 +1,12 @@
 Play-Json extensions
 ==========================
 
-### Sbt play-json >= 2.4
 
-    libraryDependencies += "org.cvogt" %% "play-json-extensions" % "0.6.0"
+requires play-json >= 2.4 (tested with and by default depends on 2.5.0 at the moment)
+
+### Sbt
+
+    libraryDependencies += "org.cvogt" %% "play-json-extensions" % "0.7.1"
 
     // if you were using formatAdt or InvariantFormat you may want to upgrade to 0.4.0 first and then to 0.6.0
     // last version for play-json 2.3 was 0.2
