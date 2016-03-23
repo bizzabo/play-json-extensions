@@ -1,15 +1,18 @@
+NOTE: groupId and package changed from org.cvogt to ai.x. Adjust your imports and dependencies.
+
 Play-Json extensions
 ==========================
 
-
-requires play-json >= 2.4 (tested with and by default depends on 2.5.0 at the moment)
+requires play-json >= 2.4 (but tested with and by default depends on 2.5.x)
 
 ### Sbt
 
-    libraryDependencies += "org.cvogt" %% "play-json-extensions" % "0.7.1"
+    libraryDependencies += "ai.x" %% "play-json-extensions" % "0.8.0"
 
-    // if you were using formatAdt or InvariantFormat you may want to upgrade to 0.4.0 first and then to 0.6.0
+    // current version is for play-json 2.5.x, however 2.4.x and 2.5.x seem very compatible
+    // last version for play-json 2.4 was 0.6.1
     // last version for play-json 2.3 was 0.2
+    // if you were using formatAdt or InvariantFormat you may want to upgrade to 0.4.0 first and then to 0.6.0
 
 ### De-/Serialize case classes of arbitrary size (23+ fields allowed)
 
@@ -87,6 +90,24 @@ requires play-json >= 2.4 (tested with and by default depends on 2.5.0 at the mo
 
     Json.parse("""A""").as[SomeAdt] == A
     Json.parse("""{"i": 5, "s":"foo", "type": "X"}""").as[SomeAdt] == X(5,"foo")
+
+#### formatSealedWithFallback[A,B <: A] is like formatSealed but provides a fallback for unknown cases.
+#### It makes sure the class B is tried last, which allows it to be permissive enough for a fallback.
+#### This allows graceful schema evolution without breaking old readers. Example:
+    sealed trait SomeAdt
+    final case class X(i: Int, s: String) extends SomeAdt
+    final case class Unknown(json: JsValue) extends SomeAdt
+    object SomeAdt{
+      implicit lazy val jsonFormat: Format[SomeAdt] = {
+        implicit lazy val XFormat: Format[X] = Jsonx.formatCaseClass[X]
+        implicit lazy val UnknownFormat: Format[Unknown] = Jsonx.formatInline[Unknown]
+        Jsonx.formatSealedWithFallback[SomeAdt]
+      }
+    }
+
+    Json.parse("""{"i": 5, "s":"foo", "type": "X"}""").as[SomeAdt] == X(5,"foo")
+    val unknownJson = Json.parse("""{"x":"y"}""")
+    unknownJson.as[Unknown] == Unknown(unknownJson)
 
 ### experimental features (will change)
 #### Serialization nirvana - formatAuto FULLY automatic de-serializer (note: needs more optimized internal implementation)

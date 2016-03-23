@@ -6,22 +6,20 @@ object MyBuild extends Build{
   val projectName = "play-json-extensions"
   lazy val aRootProject = Project(id = projectName, base = file("."),
     settings = Seq(
-      version := "0.7.1",
+      version := "0.8.0",
       name := projectName,
-      scalaVersion := "2.11.7",
+      scalaVersion := "2.11.8",
       description := "Additional type classes for the play-json serialization library",
       libraryDependencies ++=   Seq(
         "com.typesafe.play" %% "play-json" % "2.5.0",
-       // "org.cvogt" %% "scala-extensions" % "0.2",
         "org.scala-lang" % "scala-compiler" % scalaVersion.value % "compile",
-        "org.scalatest" %% "scalatest" % "2.2.5" % "test"
+        "org.scalatest" %% "scalatest" % "2.2.6" % "test"
       ),
       resolvers ++= Seq(Resolver.sonatypeRepo("releases"),Resolver.sonatypeRepo("snapshots")),
       scalacOptions ++= Seq(
         "-feature", "-deprecation", "-unchecked",
         "-language:experimental.macros"
       ),
-      //scalacOptions ++= Seq("-Xprint:patmat", "-Xshow-phases"),
       testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oFD"),
       parallelExecution := false, // <- until TMap thread-safety issues are resolved
       organizationName := "Jan Christopher Vogt",
@@ -37,7 +35,6 @@ object MyBuild extends Build{
         "-groups"
       )),
       repoKind <<= (version)(v => if(v.trim.endsWith("SNAPSHOT")) "snapshots" else "releases"),
-      //publishTo <<= (repoKind)(r => Some(Resolver.file("test", file("c:/temp/repo/"+r)))),
       publishTo <<= (repoKind){
         case "snapshots" => Some("snapshots" at "https://oss.sonatype.org/content/repositories/snapshots")
         case "releases" =>  Some("releases"  at "https://oss.sonatype.org/service/local/staging/deploy/maven2")

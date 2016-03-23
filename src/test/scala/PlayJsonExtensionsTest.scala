@@ -59,6 +59,11 @@ object FailureTest{
   assertTypeError("Jsonx.formatSealed[Foo#X]")
 }
 
+sealed trait OP
+case class Ua(i: Int) extends OP
+case class Unknown(json: JsValue) extends OP
+case class Uzzzzzzz(s: String) extends OP
+
 class PlayJsonExtensionsTest extends FunSuite{
   import implicits.optionWithNull
   test("de/serialize case class > 22"){
@@ -164,6 +169,18 @@ class PlayJsonExtensionsTest extends FunSuite{
     assert(x === Json.fromJson[SomeAdt](Json.toJson(x)).get)
     assert(y === Json.fromJson[SomeAdt](Json.toJson(y)).get)
     */
+  }
+  test("serialize Adt with fallback"){
+    implicit val OPFormat: Format[OP] = {
+      implicit val UaFormat: Format[Ua] = Jsonx.formatCaseClass[Ua]
+      implicit val UnknownFormat: Format[Unknown] = Jsonx.formatInline[Unknown]
+      implicit val UzzzzzzzFormat: Format[Uzzzzzzz] = Jsonx.formatCaseClass[Uzzzzzzz]
+      Jsonx.formatSealedWithFallback[OP,Unknown]
+    }
+    assert(JsSuccess(Ua(5)) === Json.fromJson[OP](Json.parse(""" {"i":5} """)))
+    assert(JsSuccess(Uzzzzzzz("x")) === Json.fromJson[OP](Json.parse(""" {"s":"x"} """)))
+    val json = """{"foo": "asdf"}"""
+    assert(JsSuccess(Unknown(Json.parse(json))) === Json.fromJson[OP](Json.parse(json)))
   }
   test("serialize recursive class"){
     val x = RecursiveClass(Some(RecursiveClass(Some(RecursiveClass(None,"c")),"b")),"a")

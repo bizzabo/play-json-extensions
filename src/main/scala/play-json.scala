@@ -402,13 +402,18 @@ This is caused by https://issues.scala-lang.org/browse/SI-7046 and can only be a
     t
   }
 
-  def formatSealed[T: c.WeakTypeTag]: Tree = {
+  def formatSealed[T: c.WeakTypeTag]: Tree = formatSealedInternal[T](None) 
+  def formatSealedWithFallback[T: c.WeakTypeTag,Fallback <: T: c.WeakTypeTag]: Tree = formatSealedInternal[T](Some(c.weakTypeOf[Fallback].typeSymbol.asType))
+  def formatSealedInternal[T: c.WeakTypeTag](fallback: Option[TypeSymbol]): Tree = {
     assertSealedAbstract[T]
 
     val T = c.weakTypeOf[T]
-    val subs = T.typeSymbol.asClass.knownDirectSubclasses.toVector // toVector for ordering
+    val subs =
+      T.typeSymbol
+        .asClass
+        .knownDirectSubclasses
+        .toVector
 
-    //verifyKnownDirectSubclassesPostTyper
     if(subs.isEmpty)
       c.error(c.enclosingPosition,s"""
 No child classes found for $T. If there clearly are child classes,
@@ -420,9 +425,14 @@ This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can onl
       sym => cq"""obj: $sym => Json.toJson[$sym](obj)(implicitly[Format[$sym]])"""
     }
 
-    val reads = subs.map{
-      sym => q"""json.validateAuto[$sym]"""
-    }.reduce( (l,r) => q"$l orElse $r" )
+    val reads = subs
+       // don't include fallback
+      .filterNot( t => fallback.map( _.toType =:= t.asType.toType ).getOrElse(false) )
+      .map{ sym => q"""json.validateAuto[$sym]""" }
+      .reduce( (l,r) => q"$l orElse $r" )
+
+     // add fallback last
+    val readsWithFallback = fallback.map( f => q"$reads orElse json.validateAuto[$f]" ) getOrElse reads
 
     val rootName = Literal(Constant(T.toString))
     val subNames = Literal(Constant(subs.map(_.fullName).mkString(", ")))
@@ -433,7 +443,7 @@ This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can onl
         import $pkg._
         new Format[$T]{
           ${verifyKnownDirectSubclassesPostTyper(T: Type, s"formatSealed[$T]")}
-          def reads(json: JsValue) = $reads orElse JsError("Could not deserialize to any of the subtypes of "+ $rootName +". Tried: "+ $subNames)
+          def reads(json: JsValue) = $readsWithFallback orElse JsError("Could not deserialize to any of the subtypes of "+ $rootName +". Tried: "+ $subNames)
           def writes(obj: $T) = {
             obj match {
               case ..$writes
@@ -518,6 +528,17 @@ object Jsonx{
   */
   def formatSealed[T]: Format[T]
     = macro Macros.formatSealed[T]
+
+  /**
+  Generates a PlayJson Format[T] for a sealed trait that dispatches to Writes of it's concrete subclasses.
+  Uses provided type Fallback as the last resort. Fallback needs to be a subtype of T
+  and ideally: case class Fallback(json: JsValue) extend T
+  and using formatInline[Fallback] as the serializer
+  CAREFUL: It uses orElse for Reads in an unspecified order, which can produce wrong results
+  in case of ambiguities.
+  */
+  def formatSealedWithFallback[T,Fallback <: T]: Format[T]
+    = macro Macros.formatSealedWithFallback[T,Fallback]
 
   /** serializes a singleton object of given type with the given encoder */
   def formatSingleton[T](
