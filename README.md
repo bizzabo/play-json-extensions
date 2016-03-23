@@ -28,12 +28,12 @@ requires play-json >= 2.4 (but tested with and by default depends on 2.5.x)
     
 
 #### Create explicit formatter
-    import org.cvogt.play.json.Jsonx
+    import ai.x.play.json.Jsonx
     implicit lazy val jsonFormat = Jsonx.formatCaseClass[Foo]
 
     // if your case class uses Option make sure you import
     // one of the below implicit Option Reads to avoid
-    // "could not find implicit value for parameter helper: org.cvogt.play.json.OptionValidationDispatcher"
+    // "could not find implicit value for parameter helper: ai.x.play.json.OptionValidationDispatcher"
 
     // note: formatCaseClass catches IllegalArgumentException and turns them into JsError enclosing the stack trace as the message
     // this allows using require(...) in class constructors and still get JsErrors out of serialization
@@ -48,7 +48,7 @@ requires play-json >= 2.4 (but tested with and by default depends on 2.5.x)
   assert(Bar("asd",6) == Json.parse("""{"s":"asd"}""").validate[Bar].get)
   
 #### De-/Serialize tuples
-    import org.cvogt.play.json.tuples._
+    import ai.x.play.json.tuples._
     val json = Json.parse("""[1,1.0,"Test"]""")
     val res = Json.fromJson[(Int,Double,String)](json)
     assert(JsSuccess((1,1.0,"Test")) === res)
@@ -62,9 +62,9 @@ requires play-json >= 2.4 (but tested with and by default depends on 2.5.x)
 ### Option for play-json 2.4
 
 #### implicit Option Reads
-    import org.cvogt.play.json.implicits.optionWithNull // play 2.4 suggested behavior
+    import ai.x.play.json.implicits.optionWithNull // play 2.4 suggested behavior
     // or
-    import org.cvogt.play.json.implicits.optionNoError // play 2.3 behavior
+    import ai.x.play.json.implicits.optionNoError // play 2.3 behavior
 
 #### automatic option validation: `validateAuto`
     val json = (Json.parse("""{}""") \ "s")
@@ -83,13 +83,31 @@ requires play-json >= 2.4 (but tested with and by default depends on 2.5.x)
       implicit lazy val jsonFormat: Format[X] = Jsonx.formatCaseClass[X]
     }
     object SomeAdt{
-      import org.cvogt.play.json.SingletonEncoder.simpleName  // required for formatSingleton
-      import org.cvogt.play.json.implicits.formatSingleton    // required if trait has object children
+      import ai.x.play.json.SingletonEncoder.simpleName  // required for formatSingleton
+      import ai.x.play.json.implicits.formatSingleton    // required if trait has object children
       implicit lazy val jsonFormat: Format[SomeAdt] = Jsonx.formatSealed[SomeAdt]
     }
 
     Json.parse("""A""").as[SomeAdt] == A
     Json.parse("""{"i": 5, "s":"foo", "type": "X"}""").as[SomeAdt] == X(5,"foo")
+
+#### formatSealedWithFallback[A,B <: A] is like formatSealed but provides a fallback for unknown cases.
+#### It makes sure the class B is tried last, which allows it to be permissive enough for a fallback.
+#### This allows graceful schema evolution without breaking old readers. Example:
+    sealed trait SomeAdt
+    final case class X(i: Int, s: String) extends SomeAdt
+    final case class Unknown(json: JsValue) extends SomeAdt
+    object SomeAdt{
+      implicit lazy val jsonFormat: Format[SomeAdt] = {
+        implicit lazy val XFormat: Format[X] = Jsonx.formatCaseClass[X]
+        implicit lazy val UnknownFormat: Format[Unknown] = Jsonx.formatInline[Unknown]
+        Jsonx.formatSealedWithFallback[SomeAdt]
+      }
+    }
+
+    Json.parse("""{"i": 5, "s":"foo", "type": "X"}""").as[SomeAdt] == X(5,"foo")
+    val unknownJson = Json.parse("""{"x":"y"}""")
+    unknownJson.as[Unknown] == Unknown(unknownJson)
 
 #### formatSealedWithFallback[A,B <: A] is like formatSealed but provides a fallback for unknown cases.
 #### It makes sure the class B is tried last, which allows it to be permissive enough for a fallback.
@@ -121,7 +139,7 @@ requires play-json >= 2.4 (but tested with and by default depends on 2.5.x)
     val foo = Foo(Bar(5,1.0f, Baz, Some(4): Option[Int]),A,"sdf",3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5)
     val foo2 = Foo(Bar(5,1.0f, Baz, None: Option[Int]),X(5,"x"),"sdf",3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5)
     
-    import org.cvogt.play.json.implicits.optionWithNull
+    import ai.x.play.json.implicits.optionWithNull
     val fmt2: Format[Foo] = Jsonx.formatAuto[Foo] // not implicit to avoid infinite recursion
 
     {

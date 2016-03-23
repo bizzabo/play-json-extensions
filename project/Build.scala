@@ -22,14 +22,14 @@ object MyBuild extends Build{
       ),
       testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oFD"),
       parallelExecution := false, // <- until TMap thread-safety issues are resolved
-      organizationName := "Jan Christopher Vogt",
-      organization := "org.cvogt",
+      organizationName := "x.ai - Magically schedule meetings",
+      organization := "ai.x",
       scalacOptions in (Compile, doc) <++= (version,sourceDirectory in Compile,name).map((v,src,n) => Seq(
         "-doc-title", n,
         "-doc-version", v,
-        "-doc-footer", projectName+" is developed by Jan Christopher Vogt.",
+        "-doc-footer", projectName+" is developed by x.ai.",
         "-sourcepath", src.getPath, // needed for scaladoc to strip the location of the linked source path
-        "-doc-source-url", "https://github.com/cvogt/"+projectName+"/blob/"+v+"/src/main€{FILE_PATH}.scala",
+        "-doc-source-url", "https://github.com/xdotai/"+projectName+"/blob/"+v+"/src/main€{FILE_PATH}.scala",
         "-implicits",
         "-diagrams", // requires graphviz
         "-groups"
@@ -43,8 +43,8 @@ object MyBuild extends Build{
       publishArtifact in Test := false,
       pomIncludeRepository := { _ => false },
       makePomConfiguration ~= { _.copy(configurations = Some(Seq(Compile, Runtime, Optional))) },
-      licenses += ("Two-clause BSD-style license", url("http://github.com/cvogt/"+projectName+"/blob/master/LICENSE.txt")),
-      homepage := Some(url("http://github.com/cvogt/"+projectName)),
+      licenses += ("Two-clause BSD-style license", url("http://github.com/xdotai/"+projectName+"/blob/master/LICENSE.txt")),
+      homepage := Some(url("http://github.com/xdotai/"+projectName)),
       startYear := Some(2015),
       pomExtra :=
         <developers>
@@ -56,8 +56,8 @@ object MyBuild extends Build{
           </developer>
         </developers>
           <scm>
-            <url>git@github.com:cvogt/{projectName}.git</url>
-            <connection>scm:git:git@github.com:cvogt/{projectName}.git</connection>
+            <url>git@github.com:xdotai/{projectName}.git</url>
+            <connection>scm:git:git@github.com:xdotai/{projectName}.git</connection>
           </scm>
     )
   )

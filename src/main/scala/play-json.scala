@@ -1,4 +1,4 @@
-package org.cvogt.play.json
+package ai.x.play.json
 import scala.reflect.macros.blackbox
 import play.api.libs.json._
 import collection.immutable.ListMap
@@ -27,7 +27,7 @@ package object internals{
       if(
         !T.typeSymbol.isClass || !T.typeSymbol.asClass.isCaseClass
       ) c.error(c.enclosingPosition,"")
-      q"new _root_.org.cvogt.play.json.internals.CaseClass[$T]"
+      q"new _root_.ai.x.play.json.internals.CaseClass[$T]"
     }
     /**
     fails compilation if T is not a case class
@@ -44,7 +44,7 @@ package object internals{
       if(
         !T.typeSymbol.isClass || !T.typeSymbol.asClass.isModuleClass
       ) c.error(c.enclosingPosition,"")
-      q"new _root_.org.cvogt.play.json.internals.SingletonObject[$T]"
+      q"new _root_.ai.x.play.json.internals.SingletonObject[$T]"
     }
     /**
     fails compilation if T is not a singleton object class
@@ -79,16 +79,16 @@ package object internals{
 import internals._
 
 @implicitNotFound("""could not find implicit value for parameter helper: play.api.libs.json.Reads[${T}]
-TRIGGERED BY: could not find implicit value for parameter helper: org.cvogt.play.json.OptionValidationDispatcher[${T}]
+TRIGGERED BY: could not find implicit value for parameter helper: ai.x.play.json.OptionValidationDispatcher[${T}]
 TO SOLVE THIS
 1. Make sure there is a Reads[${T}] or Format[${T}] in the implicit scope
 2. In case of Reads[Option[...]] you need to either
-   import org.cvogt.play.json.implicits.optionWithNull // suggested
+   import ai.x.play.json.implicits.optionWithNull // suggested
    or
-   import org.cvogt.play.json.implicits.optionNoError // buggy play-json 2.3 behavior
+   import ai.x.play.json.implicits.optionNoError // buggy play-json 2.3 behavior
 3. In case of Reads[... .type]
-   import org.cvogt.play.json.SingletonEncoder.simpleName
-   import org.cvogt.play.json.implicits.formatSingleton
+   import ai.x.play.json.SingletonEncoder.simpleName
+   import ai.x.play.json.implicits.formatSingleton
 """)
 final class OptionValidationDispatcher[T] private[json] (val validate: JsLookupResult => JsResult[T]) extends AnyVal
 
@@ -128,7 +128,7 @@ object `package`{
 
 private[json] class Macros(val c: blackbox.Context){
   import c.universe._
-  val pkg = q"_root_.org.cvogt.play.json"
+  val pkg = q"_root_.ai.x.play.json"
   val pjson = q"_root_.play.api.libs.json"
 
   /** like identity but prints desugared code and tree */
