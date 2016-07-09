@@ -10,8 +10,8 @@ requires play-json >= 2.4 (but tested with and by default depends on 2.5.x)
     libraryDependencies += "ai.x" %% "play-json-extensions" % "0.8.0"
 
     // current version is for play-json 2.5.x, however 2.4.x and 2.5.x seem very compatible
-    // last version for play-json 2.4 was 0.6.1 (uses org.cvt instead of ai.x)
-    // last version for play-json 2.3 was 0.2 (uses org.cvt instead of ai.x)
+    // last version for play-json 2.4 was 0.6.1 (uses org.cvogt instead of ai.x)
+    // last version for play-json 2.3 was 0.2 (uses org.cvogt instead of ai.x)
     // if you were using formatAdt or InvariantFormat you may want to upgrade to 0.4.0 first and then to 0.6.0
 
 ### De-/Serialize case classes of arbitrary size (23+ fields allowed)
