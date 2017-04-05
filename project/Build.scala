@@ -6,12 +6,12 @@ object MyBuild extends Build{
   val projectName = "play-json-extensions"
   lazy val aRootProject = Project(id = projectName, base = file("."),
     settings = Seq(
-      version := "0.8.0",
+      version := "0.9.0",
       name := projectName,
       scalaVersion := "2.11.8",
       description := "Additional type classes for the play-json serialization library",
       libraryDependencies ++=   Seq(
-        "com.typesafe.play" %% "play-json" % "2.5.0",
+        "com.typesafe.play" %% "play-json" % "2.6.0-M6",
         "org.scala-lang" % "scala-compiler" % scalaVersion.value % "compile",
         "org.scalatest" %% "scalatest" % "2.2.6" % "test"
       ),
