@@ -315,7 +315,7 @@ private[json] class Macros(val c: blackbox.Context){
       {
         import $pjson._
         import $pkg._
-        new Format[$T]{
+        new OFormat[$T]{
           def reads(json: JsValue) = {
             ..$mkResults
             val errors = Seq[JsResult[_]](..$results).collect{
@@ -503,7 +503,7 @@ object Jsonx{
   */
   def formatCaseClass[T]
     (implicit ev: CaseClass[T])
-    : Format[T]
+    : OFormat[T]
     = macro Macros.formatCaseClass[T]
 
   /**
@@ -512,7 +512,7 @@ object Jsonx{
   */
   def formatCaseClassUseDefaults[T]
     (implicit ev: CaseClass[T])
-    : Format[T]
+    : OFormat[T]
     = macro Macros.formatCaseClassUseDefaults[T]
 
   /**
