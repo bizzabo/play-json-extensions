@@ -47,15 +47,15 @@ object AdtWithEmptyLeafs{
   }
 }
 
-sealed trait SealedTrait
-case class CaseClassChild(i: Int) extends SealedTrait
+sealed trait SealedTraitWithoutObjects
+case class CaseClassChild(i: Int) extends SealedTraitWithoutObjects
 
 object FailureTest{
   import implicits.optionWithNull
   import org.scalatest.Assertions._
   type AbstractType
   implicit val childFormat = Jsonx.formatCaseClass[CaseClassChild]
-  Jsonx.formatSealed[SealedTrait]
+  Jsonx.formatSealed[SealedTraitWithoutObjects]
   assertTypeError("Jsonx.formatSealed[Foo#X]")
 }
 
@@ -200,6 +200,14 @@ class PlayJsonExtensionsTest extends FunSuite{
     val x = RecursiveChild(Some(RecursiveChild(Some(RecursiveChild(None,"c")),"b")),"a")
     val json = Json.toJson[RecursiveAdt](x)(implicitly[Format[RecursiveAdt]])
     val res = Json.fromJson[RecursiveAdt](json)(implicitly[Format[RecursiveAdt]])
+    assert(x === res.get)
+  }
+  test("serialize SealedTraitWithoutObjects using OFormat"){
+    implicit val caseClassFormat: OFormat[CaseClassChild] = Jsonx.formatCaseClass[CaseClassChild]
+    implicit val traitFormat: OFormat[SealedTraitWithoutObjects] = Jsonx.oFormatSealed[SealedTraitWithoutObjects]
+    val x = CaseClassChild(1)
+    val json = Json.toJson[SealedTraitWithoutObjects](x)
+    val res = Json.fromJson[SealedTraitWithoutObjects](json)
     assert(x === res.get)
   }
   test("deserialize case class error messages"){
