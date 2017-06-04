@@ -26,7 +26,7 @@ package object internals{
       val T = c.weakTypeOf[T]
       if(
         !T.typeSymbol.isClass || !T.typeSymbol.asClass.isCaseClass
-      ) c.error(c.enclosingPosition,"")
+      ) c.error(c.enclosingPosition,s"$T does not have case modifier")
       q"new _root_.ai.x.play.json.internals.CaseClass[$T]"
     }
     /**
@@ -43,7 +43,7 @@ package object internals{
       val T = c.weakTypeOf[T]
       if(
         !T.typeSymbol.isClass || !T.typeSymbol.asClass.isModuleClass
-      ) c.error(c.enclosingPosition,"")
+      ) c.error(c.enclosingPosition,s"$T is not an object")
       q"new _root_.ai.x.play.json.internals.SingletonObject[$T]"
     }
     /**
