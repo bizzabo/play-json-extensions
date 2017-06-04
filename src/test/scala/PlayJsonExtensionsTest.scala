@@ -2,8 +2,7 @@ package ai.x.test.play.json
 
 import org.scalatest.FunSuite
 
-import play.api.libs.json._
-import org.joda.time._
+import _root_.play.api.libs.json._
 
 import ai.x.play.json._
 import ai.x.play.json.tuples._
@@ -51,7 +50,6 @@ sealed trait SealedTrait
 case class CaseClassChild(i: Int) extends SealedTrait
 
 object FailureTest{
-  import implicits.optionWithNull
   import org.scalatest.Assertions._
   type AbstractType
   implicit val childFormat = Jsonx.formatCaseClass[CaseClassChild]

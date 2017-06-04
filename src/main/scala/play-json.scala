@@ -1,6 +1,6 @@
 package ai.x.play.json
 import scala.reflect.macros.blackbox
-import play.api.libs.json._
+import _root_.play.api.libs.json._
 import collection.immutable.ListMap
 import scala.annotation.implicitNotFound
 
@@ -182,7 +182,7 @@ private[json] class Macros(val c: blackbox.Context){
   private def caseClassFieldsDefaults( tpe: Type ): ListMap[String, Option[Tree]] = {
     if(tpe.companion == NoType){
       ListMap()
-    } else {    
+    } else {
       ListMap( tpe.companion.member( TermName( "apply" ) ).asTerm.alternatives.find(_.isSynthetic).get.asMethod.paramLists.flatten.zipWithIndex.map {
         case ( field, i ) =>
           (
@@ -212,24 +212,24 @@ private[json] class Macros(val c: blackbox.Context){
         q"""
           implicit def simpleName = SingletonEncoder.simpleName
           implicits.formatSingleton
-        """    
+        """
       }else if( isCaseClass(T) && caseClassFieldsTypes(T).size == 1 ){
         val ArgType = caseClassFieldsTypes(T).head._2
         val name = TermName(c.freshName)
         q"""
-        implicit def $name = Jsonx.formatAuto[$ArgType]
-        Jsonx.formatInline[$T]
+        implicit def $name = $pkg.Jsonx.formatAuto[$ArgType]
+        $pkg.Jsonx.formatInline[$T]
         """
       }else if( isCaseClass(T) ){
         val fieldFormatters = caseClassFieldsTypes(T).map{
           case (_,t) => t
         }.toVector.distinctWith(_ =:= _).map{ t =>
             val name = TermName(c.freshName)
-            q"implicit def $name = Jsonx.formatAuto[$t]"
+            q"implicit def $name = $pkg.Jsonx.formatAuto[$t]"
         }
         val t = q"""
         ..$fieldFormatters
-        Jsonx.formatCaseClass[$T]
+        $pkg.Jsonx.formatCaseClass[$T]
         """
         t
       } else if( T.typeSymbol.isClass && T.typeSymbol.asClass.isSealed && T.typeSymbol.asClass.isAbstract ) {
@@ -239,7 +239,7 @@ private[json] class Macros(val c: blackbox.Context){
         }
         q"""
         ..$fieldFormatters
-        Jsonx.formatSealed[$T]
+        $pkg.Jsonx.formatSealed[$T]
         """
       } else {
         q"implicitly[Format[$T]]" // produces error message if no formatter defined
@@ -247,9 +247,8 @@ private[json] class Macros(val c: blackbox.Context){
 
     val t = q"""
       {
-        import $pjson._
-        import $pkg._
-        internals.implicitlyOption[Format[$T]].getOrElse{
+        import $pjson.{ Format }
+        $pkg.internals.implicitlyOption[Format[$T]].getOrElse{
           $defaultFormatter
         }
       }
@@ -266,14 +265,13 @@ private[json] class Macros(val c: blackbox.Context){
     val (field,tpe) = fields.head
     q"""
       {
-        import $pjson._
-        import $pkg._
+        import $pjson.{ Json, Format, JsValue }
         new Format[$T]{
           def reads(json: JsValue) = json.validate[$tpe].map(new $T(_))
           def writes(obj: $T) = Json.toJson(obj.${TermName(field)})
         }
       }
-    """    
+    """
   }
 
   def formatCaseClassUseDefaults[T: c.WeakTypeTag](ev: Tree): Tree = formatCaseClassInternal[T](ev, true)
@@ -293,13 +291,16 @@ private[json] class Macros(val c: blackbox.Context){
       case (k,t) =>
         val name = TermName(c.freshName)
         val path = q"(json \ $k)"
-        val result = q"bpath.validateAuto[$t].repath(path)"
+        val result = q"""{
+          import $pkg._
+          bpath.validateAuto[$t].repath(path)
+        }"""
         // FIXME: the below needs cleanup
         (name, q"""val $name: JsResult[$t] = {
             val bpath = $path
-            val path = (JsPath() \ $k)
+            val path = ($pjson.JsPath() \ $k)
             val resolved = path.asSingleJsResult(json)
-            val result = if(bpath.isInstanceOf[JsDefined]) ${result} else ${orDefault(result,k)}
+            val result = if(bpath.isInstanceOf[$pjson.JsDefined]) ${result} else ${orDefault(result,k)}
             (resolved,result) match {
               case (_,result:JsSuccess[_]) => result
               case _ => resolved.flatMap(_ => result)
@@ -308,13 +309,12 @@ private[json] class Macros(val c: blackbox.Context){
           """)
     }.unzip
     val jsonFields = caseClassFieldsTypes(T).map{
-      case (k,t) => q"""${Constant(k)} -> Json.toJson[$t](obj.${TermName(k)})(implicitly[Writes[$t]])"""
+      case (k,t) => q"""${Constant(k)} -> $pjson.Json.toJson[$t](obj.${TermName(k)})(implicitly[$pjson.Writes[$t]])"""
     }
 
     q"""
       {
-        import $pjson._
-        import $pkg._
+        import $pjson.{ Format, JsValue, JsResult, JsError, JsSuccess, JsObject, JsNull }
         new Format[$T]{
           def reads(json: JsValue) = {
             ..$mkResults
@@ -343,8 +343,8 @@ private[json] class Macros(val c: blackbox.Context){
     val T = _T.typeSymbol.asClass
 
     val subs = T.knownDirectSubclasses
-    
-    // hack to detect breakage of knownDirectSubclasses as suggested in 
+
+    // hack to detect breakage of knownDirectSubclasses as suggested in
     // https://gitter.im/scala/scala/archives/2015/05/05 and
     // https://gist.github.com/retronym/639080041e3fecf58ba9
     val global = c.universe.asInstanceOf[scala.tools.nsc.Global]
@@ -366,7 +366,7 @@ This is caused by https://issues.scala-lang.org/browse/SI-7046 and can only be a
     val T = c.weakTypeOf[T].typeSymbol
     if( !T.isClass ){
       c.error(c.enclosingPosition, msg + ", found " + T)
-    }    
+    }
   }
 
   private def assertSealedAbstract[T: c.WeakTypeTag]{
@@ -375,7 +375,7 @@ This is caused by https://issues.scala-lang.org/browse/SI-7046 and can only be a
     if( !T.isSealed || !T.isAbstract ){
       lazy val modifiers = T.toString.split(" ").dropRight(1).mkString
       c.error(c.enclosingPosition, s"required sealed trait or sealed abstract class, found $modifiers ${T.fullName}")
-    }    
+    }
   }
 
   def formatSingletonImplicit[T: c.WeakTypeTag](encodeSingleton: Tree, ev: Tree): Tree = formatSingleton[T](encodeSingleton)
@@ -385,14 +385,13 @@ This is caused by https://issues.scala-lang.org/browse/SI-7046 and can only be a
     val T = c.weakTypeOf[T].typeSymbol.asClass
     val t = q"""
       {
-        import $pjson._
-        import $pkg._
+        import $pjson.{ Format, JsError, JsSuccess, JsValue }
         val encoded = $encodeSingleton.apply(classOf[$T])
         new Format[$T]{
           def reads(json: JsValue) = {
             if(json == encoded)
               JsSuccess(${T.module})
-            else JsError(s"not " + ${T.fullName})            
+            else JsError(s"not " + ${T.fullName})
           }
           def writes(obj: $T) = encoded
         }
@@ -402,7 +401,7 @@ This is caused by https://issues.scala-lang.org/browse/SI-7046 and can only be a
     t
   }
 
-  def formatSealed[T: c.WeakTypeTag]: Tree = formatSealedInternal[T](None) 
+  def formatSealed[T: c.WeakTypeTag]: Tree = formatSealedInternal[T](None)
   def formatSealedWithFallback[T: c.WeakTypeTag,Fallback <: T: c.WeakTypeTag]: Tree = formatSealedInternal[T](Some(c.weakTypeOf[Fallback].typeSymbol.asType))
   def formatSealedInternal[T: c.WeakTypeTag](fallback: Option[TypeSymbol]): Tree = {
     assertSealedAbstract[T]
@@ -420,30 +419,34 @@ No child classes found for $T. If there clearly are child classes,
 try moving the call into a separate file, a sibbling package, a separate sbt sub project or else.
 This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can only be avoided by manually moving the call.
       """)
-    
+
     val writes = subs.map{
-      sym => cq"""obj: $sym => Json.toJson[$sym](obj)(implicitly[Format[$sym]])"""
+      sym => cq"""obj: $sym => $pjson.Json.toJson[$sym](obj)(implicitly[$pjson.Format[$sym]])"""
     }
 
     val reads = subs
        // don't include fallback
       .filterNot( t => fallback.map( _.toType =:= t.asType.toType ).getOrElse(false) )
-      .map{ sym => q"""json.validateAuto[$sym]""" }
+      .map{ sym => q"""{
+        import $pkg._
+        json.validateAuto[$sym]
+      }""" }
       .reduce( (l,r) => q"$l orElse $r" )
 
      // add fallback last
-    val readsWithFallback = fallback.map( f => q"$reads orElse json.validateAuto[$f]" ) getOrElse reads
+    val readsWithFallback = fallback.map( f => q"""{
+      import $pkg._
+      $reads orElse json.validateAuto[$f]
+    }""" ) getOrElse reads
 
     val rootName = Literal(Constant(T.toString))
     val subNames = Literal(Constant(subs.map(_.fullName).mkString(", ")))
-    
+
     val t = q"""
       {
-        import $pjson._
-        import $pkg._
-        new Format[$T]{
+        new $pjson.Format[$T]{
           ${verifyKnownDirectSubclassesPostTyper(T: Type, s"formatSealed[$T]")}
-          def reads(json: JsValue) = $readsWithFallback orElse JsError("Could not deserialize to any of the subtypes of "+ $rootName +". Tried: "+ $subNames)
+          def reads(json: $pjson.JsValue) = $readsWithFallback orElse $pjson.JsError("Could not deserialize to any of the subtypes of "+ $rootName +". Tried: "+ $subNames)
           def writes(obj: $T) = {
             obj match {
               case ..$writes
@@ -453,7 +456,7 @@ This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can onl
         }
       }
       """
-    //println(t)
+    //println(c.typecheck(t))
     t
   }
 
@@ -478,10 +481,8 @@ object implicits{
     = macro Macros.formatSingletonImplicit[T]
 }
 
-import scala.reflect.ClassTag
 final case class SingletonEncoder(apply: java.lang.Class[_] => JsValue)
 object SingletonEncoder{
-  import java.lang.Class
   import scala.reflect.NameTransformer
   def camel2underscore(str: String) = (
     str.take(1)
