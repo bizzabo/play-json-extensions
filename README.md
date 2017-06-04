@@ -43,9 +43,9 @@ requires play-json >= 2.4 (but tested with and by default depends on 2.5.x)
     assert(foo == json.as[Foo])
 
 #### deserialization uses default values
-  case class Bar(s: String, i: Int = 6)
-  implicit lazy val format = Jsonx.formatCaseClassUseDefaults[Bar]
-  assert(Bar("asd",6) == Json.parse("""{"s":"asd"}""").validate[Bar].get)
+    case class Bar(s: String, i: Int = 6)
+    implicit lazy val format = Jsonx.formatCaseClassUseDefaults[Bar]
+    assert(Bar("asd",6) == Json.parse("""{"s":"asd"}""").validate[Bar].get)
   
 #### De-/Serialize tuples
     import ai.x.play.json.tuples._
