@@ -1,12 +1,11 @@
-package org.cvogt.test.play.json
+package ai.x.test.play.json
 
 import org.scalatest.FunSuite
 
-import play.api.libs.json._
-import org.joda.time._
+import _root_.play.api.libs.json._
 
-import org.cvogt.play.json._
-import org.cvogt.play.json.tuples._
+import ai.x.play.json._
+import ai.x.play.json.tuples._
 
 final case class RecursiveClass(o: Option[RecursiveClass], s:String)
 object RecursiveClass{
@@ -51,7 +50,6 @@ sealed trait SealedTraitWithoutObjects
 case class CaseClassChild(i: Int) extends SealedTraitWithoutObjects
 
 object FailureTest{
-  import implicits.optionWithNull
   import org.scalatest.Assertions._
   type AbstractType
   implicit val childFormat = Jsonx.formatCaseClass[CaseClassChild]
@@ -406,7 +404,7 @@ class JsonTests extends FunSuite{
     val foo = Foo(Bar(5,1.0f, Baz, Some(4): Option[Int]),A,"sdf",3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5)
     val foo2 = Foo(Bar(5,1.0f, Baz, None: Option[Int]),X(5,"x"/*,X(4,"z",A)*/),"sdf",3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5,1,2,3,4,5)
 
-    import org.cvogt.play.json.implicits.optionWithNull
+    import ai.x.play.json.implicits.optionWithNull
     ;{
       val fmt: Format[SomeAdt] = Jsonx.formatAuto[SomeAdt]
     };{
