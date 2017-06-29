@@ -402,7 +402,7 @@ This is caused by https://issues.scala-lang.org/browse/SI-7046 and can only be a
   }
 
   def formatSealed[T: c.WeakTypeTag, FormatT <: Format[T]: c.WeakTypeTag]: Tree = formatSealedInternal[T, FormatT](None)
-  def formatSealedWithFallback[T: c.WeakTypeTag,Fallback <: T: c.WeakTypeTag, FormatT <: Format[T]: c.WeakTypeTag]: Tree = formatSealedInternal[T, ForatT](Some(c.weakTypeOf[Fallback].typeSymbol.asType))
+  def formatSealedWithFallback[T: c.WeakTypeTag,Fallback <: T: c.WeakTypeTag, FormatT <: Format[T]: c.WeakTypeTag]: Tree = formatSealedInternal[T, FormatT](Some(c.weakTypeOf[Fallback].typeSymbol.asType))
   def formatSealedInternal[T: c.WeakTypeTag, FormatT <: Format[T]: c.WeakTypeTag](fallback: Option[TypeSymbol]): Tree = {
     assertSealedAbstract[T]
 
