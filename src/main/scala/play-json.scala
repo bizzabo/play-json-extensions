@@ -329,7 +329,7 @@ private[json] class Macros(val c: blackbox.Context){
                   val sw = new _root_.java.io.StringWriter()
                   val pw = new _root_.java.io.PrintWriter(sw)
                   e.printStackTrace(pw)
-                  JsError(_root_.play.api.data.validation.ValidationError(sw.toString,e))
+                  JsError(play.api.libs.json.JsonValidationError(sw.toString,e))
               }
             } else JsError(errors)
           }
