@@ -314,7 +314,7 @@ private[json] class Macros(val c: blackbox.Context){
 
     q"""
       {
-        import $pjson.{ OFormat, Format, JsValue, JsResult, JsError, JsSuccess, JsObject, JsNull }
+        import $pjson.{ OFormat, JsValue, JsResult, JsError, JsSuccess, JsObject, JsNull }
         new OFormat[$T]{
           def reads(json: JsValue) = {
             ..$mkResults
