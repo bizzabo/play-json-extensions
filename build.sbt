@@ -45,16 +45,16 @@ scalacOptions ++= Seq(
 testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oFD")
 parallelExecution := false // <- until TMap thread-safety issues are resolved
 
-scalacOptions in (Compile, doc) <++= (version,sourceDirectory in Compile,name).map((v,src,n) => Seq(
-  "-doc-title", n,
-  "-doc-version", v,
+scalacOptions in (Compile, doc) ++= Seq(
+  "-doc-title", name.value,
+  "-doc-version", version.value,
   "-doc-footer", projectName+" is developed by x.ai.",
-  "-sourcepath", src.getPath, // needed for scaladoc to strip the location of the linked source path
-  "-doc-source-url", ghUrl+"/blob/"+v+"/src/main€{FILE_PATH}.scala",
+  "-sourcepath", (sourceDirectory in Compile).value.getPath, // needed for scaladoc to strip the location of the linked source path
+  "-doc-source-url", ghUrl+"/blob/"+version.value+"/src/main€{FILE_PATH}.scala",
   "-implicits",
   "-diagrams", // requires graphviz
   "-groups"
-))
+)
 
 publishTo := Some(
   if( version.value.trim.endsWith("SNAPSHOT") ){
