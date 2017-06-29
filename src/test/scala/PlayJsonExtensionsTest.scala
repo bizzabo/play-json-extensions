@@ -10,14 +10,14 @@ import ai.x.play.json.tuples._
 final case class RecursiveClass(o: Option[RecursiveClass], s:String)
 object RecursiveClass{
   import implicits.optionWithNull
-  implicit def jsonFormat: Format[RecursiveClass] = Jsonx.formatCaseClass[RecursiveClass]   
+  implicit def jsonFormat: Format[RecursiveClass] = Jsonx.formatCaseClass[RecursiveClass] // also checks that Format works as expected type, not just OFormat
 }
 sealed trait RecursiveAdt
 final case class RecursiveChild(o: Option[RecursiveAdt], s:String) extends RecursiveAdt
 object RecursiveFormat{
   import implicits.optionWithNull
   implicit def jsonFormat: Format[RecursiveAdt] = Jsonx.formatSealed[RecursiveAdt]
-  implicit def jsonFormat2: Format[RecursiveChild] = Jsonx.formatCaseClass[RecursiveChild]   
+  implicit def jsonFormat2: OFormat[RecursiveChild] = Jsonx.formatCaseClass[RecursiveChild]
 }
 object Adt{
   sealed trait SomeAdt
@@ -91,7 +91,7 @@ class PlayJsonExtensionsTest extends FunSuite{
   }
   test("formatCaseClass with explicit return type"){
     case class Bar()
-    implicit def fmt1: Format[Bar] = Jsonx.formatCaseClass[Bar]
+    implicit def fmt1: OFormat[Bar] = Jsonx.formatCaseClass[Bar]
     val bar = Bar()
     val json = Json.toJson( bar )
     assert(bar === json.as[Bar])
@@ -170,9 +170,9 @@ class PlayJsonExtensionsTest extends FunSuite{
   }
   test("serialize Adt with fallback"){
     implicit val OPFormat: Format[OP] = {
-      implicit val UaFormat: Format[Ua] = Jsonx.formatCaseClass[Ua]
+      implicit val UaFormat: OFormat[Ua] = Jsonx.formatCaseClass[Ua]
       implicit val UnknownFormat: Format[Unknown] = Jsonx.formatInline[Unknown]
-      implicit val UzzzzzzzFormat: Format[Uzzzzzzz] = Jsonx.formatCaseClass[Uzzzzzzz]
+      implicit val UzzzzzzzFormat: OFormat[Uzzzzzzz] = Jsonx.formatCaseClass[Uzzzzzzz]
       Jsonx.formatSealedWithFallback[OP,Unknown]
     }
     assert(JsSuccess(Ua(5)) === Json.fromJson[OP](Json.parse(""" {"i":5} """)))
