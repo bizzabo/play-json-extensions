@@ -1,7 +1,7 @@
 val projectName = "play-json-extensions"
 lazy val root = Project(id = projectName, base = file("."))
 
-version := "0.9.0"
+version := "0.10.0"
 organization := "ai.x"
 name := projectName
 scalaVersion := "2.11.11"
@@ -25,7 +25,7 @@ developers := List(
 )
 
 libraryDependencies ++=   Seq(
-  "com.typesafe.play" %% "play-json" % "2.5.15",
+  "com.typesafe.play" %% "play-json" % "2.6.1",
   "org.scala-lang" % "scala-compiler" % scalaVersion.value % "compile",
   "org.scalatest" %% "scalatest" % "3.0.3" % "test"
 )
