@@ -39,7 +39,8 @@ resolvers ++= Seq(
 scalacOptions ++= Seq(
   "-feature", "-deprecation", "-unchecked",
   "-language:experimental.macros",
-  "-Ywarn-unused-import"
+  "-Ywarn-unused-import",
+  "-Xfatal-warnings"
 )
 
 testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oFD")
