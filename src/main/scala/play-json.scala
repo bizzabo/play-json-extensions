@@ -314,7 +314,7 @@ private[json] class Macros(val c: blackbox.Context){
 
     q"""
       {
-        import $pjson.{ Format, JsValue, JsResult, JsError, JsSuccess, JsObject, JsNull }
+        import $pjson.{ OFormat, JsValue, JsResult, JsError, JsSuccess, JsObject, JsNull }
         new OFormat[$T]{
           def reads(json: JsValue) = {
             ..$mkResults
@@ -350,7 +350,7 @@ private[json] class Macros(val c: blackbox.Context){
     val global = c.universe.asInstanceOf[scala.tools.nsc.Global]
     def checkSubsPostTyper = if (subs != T.knownDirectSubclasses)
       c.error(c.macroApplication.pos,
-s"""macro call $macroCall happend in a place, where typechecking of $T hasn't been completed yet.
+s"""macro call $macroCall happened in a place, where typechecking of $T hasn't been completed yet.
 Completion is required in order to find all direct subclasses.
 Try moving the call lower in the file, into a separate file, a sibbling package, a separate sbt sub project or else.
 This is caused by https://issues.scala-lang.org/browse/SI-7046 and can only be avoided by manually moving the call.
@@ -401,10 +401,12 @@ This is caused by https://issues.scala-lang.org/browse/SI-7046 and can only be a
     t
   }
 
-  def formatSealed[T: c.WeakTypeTag]: Tree = formatSealedInternal[T](None)
-  def formatSealedWithFallback[T: c.WeakTypeTag,Fallback <: T: c.WeakTypeTag]: Tree = formatSealedInternal[T](Some(c.weakTypeOf[Fallback].typeSymbol.asType))
-  def formatSealedInternal[T: c.WeakTypeTag](fallback: Option[TypeSymbol]): Tree = {
+  def formatSealed[T: c.WeakTypeTag, FormatT <: Format[T]: c.WeakTypeTag]: Tree = formatSealedInternal[T, FormatT](None)
+  def formatSealedWithFallback[T: c.WeakTypeTag,Fallback <: T: c.WeakTypeTag, FormatT <: Format[T]: c.WeakTypeTag]: Tree = formatSealedInternal[T, FormatT](Some(c.weakTypeOf[Fallback].typeSymbol.asType))
+  def formatSealedInternal[T: c.WeakTypeTag, FormatT <: Format[T]: c.WeakTypeTag](fallback: Option[TypeSymbol]): Tree = {
     assertSealedAbstract[T]
+
+    val formatClass = c.weakTypeOf[FormatT].typeSymbol
 
     val T = c.weakTypeOf[T]
     val subs =
@@ -421,7 +423,7 @@ This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can onl
       """)
 
     val writes = subs.map{
-      sym => cq"""obj: $sym => $pjson.Json.toJson[$sym](obj)(implicitly[$pjson.Format[$sym]])"""
+      sym => cq"""obj: $sym => implicitly[$pjson.$formatClass[$sym]].writes(obj)"""
     }
 
     val reads = subs
@@ -444,8 +446,8 @@ This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can onl
 
     val t = q"""
       {
-        new $pjson.Format[$T]{
-          ${verifyKnownDirectSubclassesPostTyper(T: Type, s"formatSealed[$T]")}
+        new $pjson.$formatClass[$T]{
+          ${verifyKnownDirectSubclassesPostTyper(T: Type, s"formatSealed[$T, $pjson.$formatClass[$T]")}
           def reads(json: $pjson.JsValue) = $readsWithFallback orElse $pjson.JsError("Could not deserialize to any of the subtypes of "+ $rootName +". Tried: "+ $subNames)
           def writes(obj: $T) = {
             obj match {
@@ -528,7 +530,7 @@ object Jsonx{
   in case of ambiguities.
   */
   def formatSealed[T]: Format[T]
-    = macro Macros.formatSealed[T]
+    = macro Macros.formatSealed[T, Format[T]]
 
   /**
   Generates a PlayJson Format[T] for a sealed trait that dispatches to Writes of it's concrete subclasses.
@@ -539,7 +541,26 @@ object Jsonx{
   in case of ambiguities.
   */
   def formatSealedWithFallback[T,Fallback <: T]: Format[T]
-    = macro Macros.formatSealedWithFallback[T,Fallback]
+    = macro Macros.formatSealedWithFallback[T,Fallback, Format[T]]
+
+  /**
+  Generates a PlayJson OFormat[T] for a sealed trait that dispatches to Writes of it's concrete subclasses.
+  CAREFUL: It uses orElse for Reads in an unspecified order, which can produce wrong results
+  in case of ambiguities.
+  */
+  def oFormatSealed[T]: OFormat[T]
+    = macro Macros.formatSealed[T, OFormat[T]]
+
+  /**
+  Generates a PlayJson OFormat[T] for a sealed trait that dispatches to Writes of it's concrete subclasses.
+  Uses provided type Fallback as the last resort. Fallback needs to be a subtype of T
+  and ideally: case class Fallback(json: JsValue) extend T
+  and using formatInline[Fallback] as the serializer
+  CAREFUL: It uses orElse for Reads in an unspecified order, which can produce wrong results
+  in case of ambiguities.
+  */
+  def oFormatSealedWithFallback[T,Fallback <: T]: OFormat[T]
+    = macro Macros.formatSealedWithFallback[T,Fallback, OFormat[T]]
 
   /** serializes a singleton object of given type with the given encoder */
   def formatSingleton[T](
