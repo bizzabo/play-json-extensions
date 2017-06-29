@@ -446,7 +446,7 @@ This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can onl
 
     val t = q"""
       {
-        new $pjson.Format[$T]{
+        new $pjson.$formatClass[$T]{
           ${verifyKnownDirectSubclassesPostTyper(T: Type, s"formatSealed[$T, $pjson.$formatClass[$T]")}
           def reads(json: $pjson.JsValue) = $readsWithFallback orElse $pjson.JsError("Could not deserialize to any of the subtypes of "+ $rootName +". Tried: "+ $subNames)
           def writes(obj: $T) = {
