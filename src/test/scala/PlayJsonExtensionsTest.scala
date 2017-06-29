@@ -10,7 +10,7 @@ import ai.x.play.json.tuples._
 final case class RecursiveClass(o: Option[RecursiveClass], s:String)
 object RecursiveClass{
   import implicits.optionWithNull
-  implicit def jsonFormat: OFormat[RecursiveClass] = Jsonx.formatCaseClass[RecursiveClass]
+  implicit def jsonFormat: Format[RecursiveClass] = Jsonx.formatCaseClass[RecursiveClass] // also checks that Format works as expected type, not just OFormat
 }
 sealed trait RecursiveAdt
 final case class RecursiveChild(o: Option[RecursiveAdt], s:String) extends RecursiveAdt
