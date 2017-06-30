@@ -1,0 +1,20 @@
+# on circle 2 scalac currently fails with file name too long
+# also java 6 doesn't seem to be available there
+
+dependencies:
+  cache_directories:
+    - "~/.sbt"
+    - "~/.coursier"
+    - "~/.ivy2"
+  override:
+    - sbt +test:compile
+  post:
+    # Tricks to avoid unnecessary cache updates
+    # see http://www.scala-sbt.org/0.13/docs/Travis-CI-with-sbt.html#Sample+setting
+    - find ~/.sbt -name "*.lock" | xargs rm
+    # if only coursier not needed and broken:
+    - find ~/.ivy2 -name "ivydata-*.properties" | xargs rm
+
+test:
+  override:
+    - sbt +test

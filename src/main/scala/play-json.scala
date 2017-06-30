@@ -314,7 +314,7 @@ private[json] class Macros(val c: blackbox.Context){
 
     q"""
       {
-        import $pjson.{ OFormat, JsValue, JsResult, JsError, JsSuccess, JsObject, JsNull }
+        import $pjson.{ OFormat, JsValue, JsResult, JsError, JsSuccess, JsObject, JsNull, JsonValidationError }
         new OFormat[$T]{
           def reads(json: JsValue) = {
             ..$mkResults
@@ -329,7 +329,7 @@ private[json] class Macros(val c: blackbox.Context){
                   val sw = new _root_.java.io.StringWriter()
                   val pw = new _root_.java.io.PrintWriter(sw)
                   e.printStackTrace(pw)
-                  JsError(_root_.play.api.data.validation.ValidationError(sw.toString,e))
+                  JsError(JsonValidationError(sw.toString,e))
               }
             } else JsError(errors)
           }

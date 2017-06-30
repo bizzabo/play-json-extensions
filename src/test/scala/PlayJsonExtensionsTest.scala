@@ -9,7 +9,6 @@ import ai.x.play.json.tuples._
 
 final case class RecursiveClass(o: Option[RecursiveClass], s:String)
 object RecursiveClass{
-  import implicits.optionWithNull
   implicit def jsonFormat: Format[RecursiveClass] = Jsonx.formatCaseClass[RecursiveClass] // also checks that Format works as expected type, not just OFormat
 }
 sealed trait RecursiveAdt
@@ -318,8 +317,8 @@ class JsonTests extends FunSuite{
     assert(B2(Some("foo")) === Json.fromJson[B2](Json.parse("""{"s": "foo"}""")).get)
     assert(B2(None) === Json.fromJson[B2](Json.parse("""{"s": null}""")).get)
     assert(B2(None) === Json.fromJson[B2](Json.parse("""{}""")).get)
-    assert(B2(None) === Json.fromJson[B2](Json.parse("""5""")).get)
-    assert(B2(None) === Json.fromJson[B2](Json.parse("""null""")).get)
+    assert(Json.fromJson[B2](Json.parse("""5""")).isInstanceOf[JsError])
+    assert(Json.fromJson[B2](Json.parse("""null""")).isInstanceOf[JsError])
 
     assert(Optional(None) === Json.fromJson[Optional](Json.parse("""{}""")).get)
     assert(Optional(Some(Mandatory(List("test")))) === Json.fromJson[Optional](Json.parse("""{"o":{"s":["test"]}}""")).get)
@@ -362,8 +361,8 @@ class JsonTests extends FunSuite{
     assert(B2(Some("foo")) === Json.fromJson[B2](Json.parse("""{"s": "foo"}""")).get)
     assert(B2(None) === Json.fromJson[B2](Json.parse("""{"s": null}""")).get)
     assert(B2(None) === Json.fromJson[B2](Json.parse("""{}""")).get)
-    assert(B2(None) === Json.fromJson[B2](Json.parse("""5""")).get)
-    assert(B2(None) === Json.fromJson[B2](Json.parse("""null""")).get)
+    assert(Json.fromJson[B2](Json.parse("""5""")).isInstanceOf[JsError])
+    assert(Json.fromJson[B2](Json.parse("""null""")).isInstanceOf[JsError])
 
     assert(Optional(None) === Json.fromJson[Optional](Json.parse("""{}""")).get)
     assert(Optional(Some(Mandatory(List("test")))) === Json.fromJson[Optional](Json.parse("""{"o":{"s":["test"]}}""")).get)
