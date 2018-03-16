@@ -257,6 +257,22 @@ private[json] class Macros(val c: blackbox.Context){
     t
   }
 
+  private def illegalArgExceptionToJsError(inner: Tree): Tree = {
+    q"""
+      {
+        import $pjson.{ JsSuccess, JsError, JsonValidationError }
+        try { JsSuccess($inner) }
+        catch {
+          case e: _root_.java.lang.IllegalArgumentException =>
+            val sw = new _root_.java.io.StringWriter()
+            val pw = new _root_.java.io.PrintWriter(sw)
+            e.printStackTrace(pw)
+            JsError(JsonValidationError(sw.toString,e))
+        }
+      }
+     """
+  }
+
   def formatInline[T: c.WeakTypeTag]: Tree = {
     val T = c.weakTypeOf[T]
     val fields = caseClassFieldsTypes(T)
@@ -267,7 +283,7 @@ private[json] class Macros(val c: blackbox.Context){
       {
         import $pjson.{ Json, Format, JsValue }
         new Format[$T]{
-          def reads(json: JsValue) = json.validate[$tpe].map(new $T(_))
+          def reads(json: JsValue) = json.validate[$tpe].flatMap(field => ${illegalArgExceptionToJsError(q"new $T(field)")})
           def writes(obj: $T) = Json.toJson(obj.${TermName(field)})
         }
       }
@@ -302,7 +318,7 @@ private[json] class Macros(val c: blackbox.Context){
             val resolved = path.asSingleJsResult(json)
             val result = if(bpath.isInstanceOf[$pjson.JsDefined]) ${result} else ${orDefault(result,k)}
             (resolved,result) match {
-              case (_,result:JsSuccess[_]) => result
+              case (_,result:$pjson.JsSuccess[_]) => result
               case _ => resolved.flatMap(_ => result)
             }
           }
@@ -314,7 +330,7 @@ private[json] class Macros(val c: blackbox.Context){
 
     q"""
       {
-        import $pjson.{ OFormat, JsValue, JsResult, JsError, JsSuccess, JsObject, JsNull, JsonValidationError }
+        import $pjson.{ OFormat, JsValue, JsResult, JsError, JsObject, JsNull }
         new OFormat[$T]{
           def reads(json: JsValue) = {
             ..$mkResults
@@ -322,15 +338,7 @@ private[json] class Macros(val c: blackbox.Context){
               case JsError(values) => values
             }.flatten
             if(errors.isEmpty){
-              try{
-                JsSuccess(new $T(..${results.map(r => q"$r.get")}))
-              } catch {
-                case e: _root_.java.lang.IllegalArgumentException =>
-                  val sw = new _root_.java.io.StringWriter()
-                  val pw = new _root_.java.io.PrintWriter(sw)
-                  e.printStackTrace(pw)
-                  JsError(JsonValidationError(sw.toString,e))
-              }
+              ${illegalArgExceptionToJsError(q"""new $T(..${results.map(r => q"$r.get")})""")}
             } else JsError(errors)
           }
           def writes(obj: $T) = JsObject(Seq[(String,JsValue)](..$jsonFields).filterNot(_._2 == JsNull))
