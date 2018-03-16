@@ -1,0 +1,41 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: codestar/circleci-scala-sbt-git:scala-2.12.2-sbt-0.13.15
+    # Ramdisk to work around docker aufs 242 filename length limit
+    working_directory: /dev/ram/play-json-extensions
+    steps:
+      - checkout
+
+      - restore_cache:
+          keys:
+            - play-json-extensions-{{ checksum "project/build.sbt" }}-{{ checksum "build.sbt" }}
+            - play-json-extensions-1
+
+      - run:
+          name: "Compile"
+          command:
+            sbt +compile +test:compile exit
+
+      - save_cache:
+          key: pronto-domain-{{ checksum "project/build.sbt" }}-{{ checksum "build.sbt" }}
+          paths:
+            - ~/.sbt
+            - ~/.ivy2/cache
+
+      - save_cache:
+          # Changing this key (incrementing the number at the end) is the only way
+          # to remove old dependencies or generate a more up-to-date cache for builds where a .sbt file changed
+          key: play-json-extensions-1
+          paths:
+            - ~/.sbt
+            - ~/.ivy2/cache
+
+      - run:
+          name: "Run tests"
+          command:
+            sbt +test exit
+
+      - store_test_results:
+          path: target/test-reports
