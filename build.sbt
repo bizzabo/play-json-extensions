@@ -4,8 +4,8 @@ lazy val root = Project(id = projectName, base = file("."))
 version := "0.10.0"
 organization := "ai.x"
 name := projectName
-scalaVersion := "2.11.11"
-crossScalaVersions := Seq("2.11.11", "2.12.2")
+scalaVersion := "2.11.12"
+crossScalaVersions := Seq("2.11.12", "2.12.6")
 description := "Additional type classes for the play-json serialization library"
 organizationName := "x.ai - Magically schedule meetings"
 
