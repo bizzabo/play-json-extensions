@@ -1,11 +1,16 @@
+import scalariform.formatter.preferences._
+import com.typesafe.sbt.SbtScalariform.{ScalariformKeys, autoImport}
+
 val projectName = "play-json-extensions"
 lazy val root = Project(id = projectName, base = file("."))
 
-version := "0.10.0"
+version := "0.20.0"
 organization := "ai.x"
 name := projectName
-scalaVersion := "2.11.12"
-crossScalaVersions := Seq("2.11.12", "2.12.6")
+scalaVersion := "2.12.8"
+crossScalaVersions := Seq("2.11.12", "2.12.8")
+useGpg := true
+credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credential")
 description := "Additional type classes for the play-json serialization library"
 organizationName := "x.ai - Magically schedule meetings"
 
@@ -57,15 +62,19 @@ scalacOptions in (Compile, doc) ++= Seq(
   "-groups"
 )
 
-publishTo := Some(
-  if( version.value.trim.endsWith("SNAPSHOT") ){
-    "snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
-  } else {
-    "releases"  at "https://oss.sonatype.org/service/local/staging/deploy/maven2"
-  }
-)
+publishTo := sonatypePublishTo.value
 
 publishMavenStyle := true
 publishArtifact in Test := false
 pomIncludeRepository := { _ => false }
-makePomConfiguration ~= { _.copy(configurations = Some(Seq(Compile, Runtime, Optional))) }
+
+scalariformPreferences := scalariformPreferences.value
+      .setPreference(AlignParameters, true)
+      .setPreference(AlignArguments, true)
+      .setPreference(AlignSingleLineCaseStatements, true)
+      .setPreference(MultilineScaladocCommentsStartOnFirstLine, true)
+      .setPreference(SpaceInsideParentheses, true)
+      .setPreference(SpacesWithinPatternBinders, true)
+      .setPreference(SpacesAroundMultiImports, true)
+      .setPreference(DanglingCloseParenthesis, Preserve)
+.setPreference(DoubleIndentConstructorArguments, true)
