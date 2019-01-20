@@ -5,7 +5,7 @@ Play-Json extensions
 
 **For Scala 2.11.x and 2.12.x**
 
-play-json 2.6.x: `libraryDependencies += "ai.x" %% "play-json-extensions" % "0.10.0"`
+play-json 2.6.x: `libraryDependencies += "ai.x" %% "play-json-extensions" % "0.20.0"`
 
 **For 2.11.x only**
 
