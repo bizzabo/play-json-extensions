@@ -4,7 +4,7 @@ import com.typesafe.sbt.SbtScalariform.{ScalariformKeys, autoImport}
 val projectName = "play-json-extensions"
 lazy val root = Project(id = projectName, base = file("."))
 
-version := "0.20.0"
+version := "0.21.0"
 organization := "ai.x"
 name := projectName
 scalaVersion := "2.12.8"
@@ -31,7 +31,7 @@ developers := List(
 )
 
 libraryDependencies ++=   Seq(
-  "com.typesafe.play" %% "play-json" % "2.6.1",
+  "com.typesafe.play" %% "play-json" % "2.6.13",
   "org.scala-lang" % "scala-compiler" % scalaVersion.value % "compile",
   "org.scalatest" %% "scalatest" % "3.0.5" % "test"
 )
