@@ -1,0 +1,88 @@
+version: 2
+jobs:
+  build_211:
+    docker:
+      - image: codestar/circleci-scala-sbt-git:scala-2.11.12-sbt-1.2.8
+    # Ramdisk to work around docker aufs 242 filename length limit
+    working_directory: /dev/ram/play-json-extensions
+    steps:
+      - checkout
+
+      - restore_cache:
+          keys:
+            - play-json-extensions-2.11-{{ checksum "project/plugins.sbt" }}-{{ checksum "build.sbt" }}
+            - play-json-extensions-2.11-1
+
+      - run:
+          name: "Compile"
+          command:
+            sbt ++2.11.12 compile test:compile exit
+
+      - save_cache:
+          key: play-json-extensions-2.11-{{ checksum "project/plugins.sbt" }}-{{ checksum "build.sbt" }}
+          paths:
+            - ~/.sbt
+            - ~/.ivy2
+
+      - save_cache:
+          # Changing this key (incrementing the number at the end) is the only way
+          # to remove old dependencies or generate a more up-to-date cache for builds where a .sbt file changed
+          key: play-json-extensions-2.11-1
+          paths:
+            - ~/.sbt
+            - ~/.ivy2
+
+      - run:
+          name: "Test"
+          command:
+            sbt ++2.11.12 test exit
+
+      - store_test_results:
+          path: target/test-reports
+
+  build_212:
+    docker:
+      - image: codestar/circleci-scala-sbt-git:scala-2.12.8-sbt-1.2.8
+    # Ramdisk to work around docker aufs 242 filename length limit
+    working_directory: /dev/ram/play-json-extensions
+    steps:
+      - checkout
+
+      - restore_cache:
+          keys:
+            - play-json-extensions-2.12-{{ checksum "project/plugins.sbt" }}-{{ checksum "build.sbt" }}
+            - play-json-extensions-2.12-1
+
+      - run:
+          name: "Compile"
+          command:
+            sbt ++2.12.8 compile test:compile exit
+
+      - save_cache:
+          key: play-json-extensions-2.12-{{ checksum "project/plugins.sbt" }}-{{ checksum "build.sbt" }}
+          paths:
+            - ~/.sbt
+            - ~/.ivy2
+
+      - save_cache:
+          # Changing this key (incrementing the number at the end) is the only way
+          # to remove old dependencies or generate a more up-to-date cache for builds where a .sbt file changed
+          key: play-json-extensions-2.12-1
+          paths:
+            - ~/.sbt
+            - ~/.ivy2
+
+      - run:
+          name: "Test"
+          command:
+            sbt ++2.12.8 test exit
+
+      - store_test_results:
+          path: target/test-reports
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - build_211
+      - build_212
