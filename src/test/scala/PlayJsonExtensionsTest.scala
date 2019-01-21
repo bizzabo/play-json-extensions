@@ -126,6 +126,22 @@ class PlayJsonExtensionsTest extends FunSuite{
       capturedFailedRequire.asInstanceOf[JsError].errors.head._1.toString === "/bar"
     )
   }
+  test("require to JsError for inline format"){
+    case class Bar(a: Int){
+      require(a > 5, "a needs to be larger than 5")
+    }
+    case class Baz(bar: Bar)
+    implicit def fmt1 = Jsonx.formatInline[Bar]
+    implicit def fmt2 = Jsonx.formatCaseClass[Baz]
+    assert(Baz(Bar(6)) === Json.parse("""{"bar":6}""").validate[Baz].get)
+    val capturedFailedRequire = Json.parse("""{"bar":5}""").validate[Baz]
+    assert(
+      capturedFailedRequire.asInstanceOf[JsError].errors.head._2.head.message contains "requirement failed: a needs to be larger than 5"
+    )
+    assert(
+      capturedFailedRequire.asInstanceOf[JsError].errors.head._1.toString === "/bar"
+    )
+  }
   test("serialize Adt"){
     import Adt._
     implicit def simpleName = SingletonEncoder.simpleName
@@ -367,7 +383,7 @@ class JsonTests extends FunSuite{
     assert(Optional(None) === Json.fromJson[Optional](Json.parse("""{}""")).get)
     assert(Optional(Some(Mandatory(List("test")))) === Json.fromJson[Optional](Json.parse("""{"o":{"s":["test"]}}""")).get)
     assert(Json.fromJson[Optional](Json.parse("""{"o":{}}""")).isInstanceOf[JsError])
-    
+
     assert(Optional2(None) === Json.fromJson[Optional2](Json.parse("""{}""")).get)
     assert(Optional2(Some(Mandatory2(List("test")))) === Json.fromJson[Optional2](Json.parse("""{"o":{"s":["test"]}}""")).get)
     assert(Json.parse("""{"o":{}}""").validate[Optional2].isInstanceOf[JsError])
@@ -437,7 +453,7 @@ class JsonTests extends FunSuite{
     val fmt2: Format[Foo] = Jsonx.formatAuto[Foo] // not implicit to avoid infinite recursion
 
     {
-      implicit def fmt3: Format[Foo] = fmt2    
+      implicit def fmt3: Format[Foo] = fmt2
       val json = Json.toJson( foo )
       assert(foo === json.as[Foo])
       assert(Some(foo) === json.validateAuto[Option[Foo]].get)
@@ -455,7 +471,7 @@ class JsonTests extends FunSuite{
   test("defaults error test"){
 
     implicit val childFormat = Jsonx.formatCaseClassUseDefaults[CaseClassWithDefaults]
-  
+
     val string = """{ "foobar" : 10 } """
     val string2 = """{ "foobar": "test"} """
     val string3 = """{} """
