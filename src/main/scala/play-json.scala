@@ -56,6 +56,7 @@ package object internals {
     def distinctWith[That]( equivalent: ( A, A ) => Boolean ): Iterable[A] = {
       var l = List[A]()
       val b = Iterable.newBuilder[A]
+      b.sizeHint( coll )
       for ( elem <- coll ) {
         l.find {
           case first => equivalent( elem, first )
