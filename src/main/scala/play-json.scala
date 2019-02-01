@@ -47,7 +47,7 @@ package object internals {
   }
 
   import scala.collection._
-  private[json] implicit class TraversableExtensions[A, Repr]( val coll: Iterable[A] ) extends AnyVal {
+  private[json] implicit class IterableExtensions[A, Repr]( val coll: Iterable[A] ) extends AnyVal {
     /** Eliminates duplicates based on the given equivalence function.
      *  There is no guarantee which elements stay in case element two elements are considered equivalent.
      *  this has runtime O(n^2)
@@ -195,7 +195,7 @@ private[json] class Macros( val c: blackbox.Context ) {
 
   def formatAuto[T: c.WeakTypeTag]: Tree = formatAutoInternal( c.weakTypeOf[T] )
   def formatAutoInternal( T: Type ): Tree = {
-    import internals.TraversableExtensions
+    import internals.IterableExtensions
     def defaultFormatter =
       if ( T <:< typeOf[Option[_]] ) {
         val s = T.typeArgs.head
