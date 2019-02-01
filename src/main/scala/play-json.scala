@@ -53,7 +53,6 @@ package object internals {
      *  this has runtime O(n^2)
      *  @param symmetric comparison function which tests whether the two arguments are considered equivalent.
      */
-    //implicit def traversableReads[F[_], A](implicit bf: Factory[A, F[A]], ra: Reads[A])
     def distinctWith[That]( equivalent: ( A, A ) => Boolean ): Iterable[A] = {
       var l = List[A]()
       val b = Iterable.newBuilder[A]
