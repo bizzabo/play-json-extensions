@@ -8,7 +8,7 @@ version := "0.21.0"
 organization := "ai.x"
 name := projectName
 scalaVersion := "2.12.8"
-crossScalaVersions := Seq("2.11.12", "2.12.8")
+crossScalaVersions := Seq("2.11.12", "2.12.8", "2.13.0-M5")
 useGpg := true
 credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credential")
 description := "Additional type classes for the play-json serialization library"
@@ -31,9 +31,9 @@ developers := List(
 )
 
 libraryDependencies ++=   Seq(
-  "com.typesafe.play" %% "play-json" % "2.6.13",
+  "com.typesafe.play" %% "play-json" % "2.7.1",
   "org.scala-lang" % "scala-compiler" % scalaVersion.value % "compile",
-  "org.scalatest" %% "scalatest" % "3.0.5" % "test"
+  "org.scalatest" %% "scalatest" % "3.0.6-SNAP6" % "test"
 )
 
 resolvers ++= Seq(
@@ -44,7 +44,10 @@ resolvers ++= Seq(
 scalacOptions ++= Seq(
   "-feature", "-deprecation", "-unchecked",
   "-language:experimental.macros",
-  "-Ywarn-unused-import",
+  CrossVersion.partialVersion(scalaVersion.value) match {
+    case Some((2, 11)) => "-Ywarn-unused-import"
+    case _ => "-Ywarn-unused:imports"
+  },
   "-Xfatal-warnings"
 )
 

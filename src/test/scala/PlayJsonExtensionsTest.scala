@@ -14,7 +14,6 @@ object RecursiveClass{
 sealed trait RecursiveAdt
 final case class RecursiveChild(o: Option[RecursiveAdt], s:String) extends RecursiveAdt
 object RecursiveFormat{
-  import implicits.optionWithNull
   implicit def jsonFormat: Format[RecursiveAdt] = Jsonx.formatSealed[RecursiveAdt]
   implicit def jsonFormat2: OFormat[RecursiveChild] = Jsonx.formatCaseClass[RecursiveChild]
 }
@@ -62,7 +61,6 @@ case class Unknown(json: JsValue) extends OP
 case class Uzzzzzzz(s: String) extends OP
 
 class PlayJsonExtensionsTest extends FunSuite{
-  import implicits.optionWithNull
   test("de/serialize case class > 22"){
     case class Bar(a: Int, b:Float)
     case class Foo(_1:Bar,_2:String,_3:Int,_4:Int,_5:Int,_21:Int,_22:Int,_23:Int,_24:Int,_25:Int,_31:Int,_32:Int,_33:Int,_34:Int,_35:Int,_41:Int,_42:Int,_43:Int,_44:Int,_45:Int,_51:Int,_52:Int,_53:Int,_54:Int,_55:Int)
@@ -367,7 +365,7 @@ class JsonTests extends FunSuite{
     assert(Optional(None) === Json.fromJson[Optional](Json.parse("""{}""")).get)
     assert(Optional(Some(Mandatory(List("test")))) === Json.fromJson[Optional](Json.parse("""{"o":{"s":["test"]}}""")).get)
     assert(Json.fromJson[Optional](Json.parse("""{"o":{}}""")).isInstanceOf[JsError])
-    
+
     assert(Optional2(None) === Json.fromJson[Optional2](Json.parse("""{}""")).get)
     assert(Optional2(Some(Mandatory2(List("test")))) === Json.fromJson[Optional2](Json.parse("""{"o":{"s":["test"]}}""")).get)
     assert(Json.parse("""{"o":{}}""").validate[Optional2].isInstanceOf[JsError])
@@ -437,7 +435,7 @@ class JsonTests extends FunSuite{
     val fmt2: Format[Foo] = Jsonx.formatAuto[Foo] // not implicit to avoid infinite recursion
 
     {
-      implicit def fmt3: Format[Foo] = fmt2    
+      implicit def fmt3: Format[Foo] = fmt2
       val json = Json.toJson( foo )
       assert(foo === json.as[Foo])
       assert(Some(foo) === json.validateAuto[Option[Foo]].get)
@@ -455,7 +453,7 @@ class JsonTests extends FunSuite{
   test("defaults error test"){
 
     implicit val childFormat = Jsonx.formatCaseClassUseDefaults[CaseClassWithDefaults]
-  
+
     val string = """{ "foobar" : 10 } """
     val string2 = """{ "foobar": "test"} """
     val string3 = """{} """

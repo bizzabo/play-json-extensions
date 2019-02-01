@@ -47,16 +47,16 @@ package object internals {
   }
 
   import scala.collection._
-  import scala.collection.generic.CanBuildFrom
-  private[json] implicit class TraversableLikeExtensions[A, Repr]( val coll: TraversableLike[A, Repr] ) extends AnyVal {
+  private[json] implicit class TraversableExtensions[A, Repr]( val coll: Iterable[A] ) extends AnyVal {
     /** Eliminates duplicates based on the given equivalence function.
      *  There is no guarantee which elements stay in case element two elements are considered equivalent.
      *  this has runtime O(n^2)
      *  @param symmetric comparison function which tests whether the two arguments are considered equivalent.
      */
-    def distinctWith[That]( equivalent: ( A, A ) => Boolean )( implicit bf: CanBuildFrom[Repr, A, That] ): That = {
+    //implicit def traversableReads[F[_], A](implicit bf: Factory[A, F[A]], ra: Reads[A])
+    def distinctWith[That]( equivalent: ( A, A ) => Boolean ): Iterable[A] = {
       var l = List[A]()
-      val b = bf( coll.repr )
+      val b = Iterable.newBuilder[A]
       for ( elem <- coll ) {
         l.find {
           case first => equivalent( elem, first )
@@ -196,7 +196,7 @@ private[json] class Macros( val c: blackbox.Context ) {
 
   def formatAuto[T: c.WeakTypeTag]: Tree = formatAutoInternal( c.weakTypeOf[T] )
   def formatAutoInternal( T: Type ): Tree = {
-    import internals.TraversableLikeExtensions
+    import internals.TraversableExtensions
     def defaultFormatter =
       if ( T <:< typeOf[Option[_]] ) {
         val s = T.typeArgs.head
@@ -358,14 +358,14 @@ This is caused by https://issues.scala-lang.org/browse/SI-7046 and can only be a
     q"type VerifyKnownDirectSubclassesPostTyper = $checkSubsPostTyperTypTree"
   }
 
-  private def assertClass[T: c.WeakTypeTag]( msg: String = s"required class or trait" ) {
+  private def assertClass[T: c.WeakTypeTag]( msg: String = s"required class or trait" ) = {
     val T = c.weakTypeOf[T].typeSymbol
     if ( !T.isClass ) {
       c.error( c.enclosingPosition, msg + ", found " + T )
     }
   }
 
-  private def assertSealedAbstract[T: c.WeakTypeTag] {
+  private def assertSealedAbstract[T: c.WeakTypeTag] = {
     assertClass[T]()
     val T = c.weakTypeOf[T].typeSymbol.asClass
     if ( !T.isSealed || !T.isAbstract ) {
