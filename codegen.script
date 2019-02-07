@@ -9,7 +9,7 @@ def tuple(i: Int) = {
   s"""
   implicit def formatTuple$i[${idents(i,"T") map (_+": Format") mkString ","}] = new Format[(${types(i)})]{
     def reads(json: JsValue) = json.validate[JsArray].flatMap{
-      case JsArray(Seq(${vals(i)})) =>
+      case JsArray(scala.collection.Seq(${vals(i)})) =>
         val (${vals(i,"r")}) =
           (${1 to i map (j => s"t$j.validate[T$j]") mkString ","})
         mergeErrors(
