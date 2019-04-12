@@ -132,21 +132,6 @@ private[json] class Macros( val c: blackbox.Context ) {
     tree
   }
 
-  /** Generates a list of all known classes and traits in an inheritance tree.
-   *  Includes the given class itself.
-   *  Does not include subclasses of non-sealed classes and traits.
-   *  TODO: move this to scala-extensions
-   */
-  private def knownTransitiveSubclasses( sym: ClassSymbol ): Seq[ClassSymbol] = {
-    sym +: (
-      if ( sym.isModuleClass ) {
-        Seq()
-      } else {
-        sym.knownDirectSubclasses.flatMap( s => knownTransitiveSubclasses( s.asClass ) )
-      }
-    ).toSeq
-  }
-
   private def primaryConstructor( tpe: Type ): MethodSymbol = {
     tpe.decls.collectFirst {
       case m: MethodSymbol if m.isPrimaryConstructor =>
