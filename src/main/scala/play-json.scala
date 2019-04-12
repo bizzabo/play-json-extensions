@@ -3,6 +3,7 @@ import scala.reflect.macros.blackbox
 import _root_.play.api.libs.json._
 import collection.immutable.ListMap
 import scala.annotation.implicitNotFound
+import scala.reflect.NameTransformer
 
 package object internals {
   /*
@@ -304,7 +305,7 @@ private[json] class Macros( val c: blackbox.Context ) {
           """ )
     }.unzip
     val jsonFields = caseClassFieldsTypes( T ).map {
-      case ( k, t ) => q"""${Constant( k )} -> $pjson.Json.toJson[$t](obj.${TermName( k )})(implicitly[$pjson.Writes[$t]])"""
+      case ( k, t ) => q"""${Constant( NameTransformer.decode( k ) )} -> $pjson.Json.toJson[$t](obj.${TermName( NameTransformer.encode( k ) )})(implicitly[$pjson.Writes[$t]])"""
     }
 
     q"""
