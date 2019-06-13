@@ -32,7 +32,7 @@ developers := List(
 
 libraryDependencies ++=   Seq(
   "com.typesafe.play" %% "play-json" % "2.7.1",
-  "org.scala-lang" % "scala-compiler" % scalaVersion.value % "compile",
+  "org.scala-lang" % "scala-compiler" % scalaVersion.value % "provided",
   "org.scalatest" %% "scalatest" % "3.0.6-SNAP6" % "test"
 )
 
