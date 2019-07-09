@@ -52,7 +52,8 @@ package object internals {
     /** Eliminates duplicates based on the given equivalence function.
      *  There is no guarantee which elements stay in case element two elements are considered equivalent.
      *  this has runtime O(n^2)
-     *  @param symmetric comparison function which tests whether the two arguments are considered equivalent.
+     *
+     *  @param equivalent comparison function which tests whether the two arguments are considered equivalent.
      */
     def distinctWith[That]( equivalent: ( A, A ) => Boolean ): Iterable[A] = {
       var l = List[A]()
@@ -180,14 +181,14 @@ private[json] class Macros( val c: blackbox.Context ) {
     }
   }
 
-  def formatAuto[T: c.WeakTypeTag]: Tree = formatAutoInternal( c.weakTypeOf[T] )
-  def formatAutoInternal( T: Type ): Tree = {
+  def formatAuto[T: c.WeakTypeTag]( encoder: Tree ): Tree = formatAutoInternal( c.weakTypeOf[T], encoder )
+  def formatAutoInternal( T: Type, encoder: Tree ): Tree = {
     import internals.IterableExtensions
     def defaultFormatter =
       if ( T <:< typeOf[Option[_]] ) {
         val s = T.typeArgs.head
         q"""
-          Format.optionWithNull(${formatAutoInternal( s )})
+          Format.optionWithNull(${formatAutoInternal( s, encoder )})
         """
       } else if ( isModuleClass( T ) ) {
         q"""
@@ -226,16 +227,15 @@ private[json] class Macros( val c: blackbox.Context ) {
         q"implicitly[Format[$T]]" // produces error message if no formatter defined
       }
 
-    val t = q"""
+    q"""
       {
         import $pjson.{ Format }
+        implicit val encoder: NameEncoder = $encoder
         $pkg.internals.implicitlyOption[Format[$T]].getOrElse{
           $defaultFormatter
         }
       }
     """
-    //println(t)
-    t
   }
 
   private def illegalArgExceptionToJsError( inner: Tree ): Tree = {
@@ -271,11 +271,11 @@ private[json] class Macros( val c: blackbox.Context ) {
     """
   }
 
-  def formatCaseClassUseDefaults[T: c.WeakTypeTag]( ev: Tree ): Tree = formatCaseClassInternal[T]( ev, true )
+  def formatCaseClassUseDefaults[T: c.WeakTypeTag]( ev: Tree, encoder: Tree ): Tree = formatCaseClassInternal[T]( ev, encoder, useDefaults = true )
 
-  def formatCaseClass[T: c.WeakTypeTag]( ev: Tree ): Tree = formatCaseClassInternal[T]( ev, false )
+  def formatCaseClass[T: c.WeakTypeTag]( ev: Tree, encoder: Tree ): Tree = formatCaseClassInternal[T]( ev, encoder, useDefaults = false )
 
-  private def formatCaseClassInternal[T: c.WeakTypeTag]( ev: Tree, useDefaults: Boolean ): Tree = {
+  private def formatCaseClassInternal[T: c.WeakTypeTag]( ev: Tree, encoder: Tree, useDefaults: Boolean ): Tree = {
     val T = c.weakTypeOf[T]
     if ( !isCaseClass( T ) )
       c.error( c.enclosingPosition, s"not a case class: $T" )
@@ -287,7 +287,7 @@ private[json] class Macros( val c: blackbox.Context ) {
     val ( results, mkResults ) = caseClassFieldsTypes( T ).map {
       case ( k, t ) =>
         val name = TermName( c.freshName )
-        val path = q"(json \ $k)"
+        val path = q"""(json \ (encoder.encode($k)))"""
         val result = q"""{
           import $pkg._
           bpath.validateAuto[$t].repath(path)
@@ -297,7 +297,7 @@ private[json] class Macros( val c: blackbox.Context ) {
             val bpath = $path
             val path = ($pjson.JsPath() \ $k)
             val resolved = path.asSingleJsResult(json)
-            val result = if(bpath.isInstanceOf[$pjson.JsDefined]) ${result} else ${orDefault( result, k )}
+            val result = if(bpath.isInstanceOf[$pjson.JsDefined]) $result else ${orDefault( result, k )}
             (resolved,result) match {
               case (_,result:$pjson.JsSuccess[_]) => result
               case _ => resolved.flatMap(_ => result)
@@ -322,7 +322,9 @@ private[json] class Macros( val c: blackbox.Context ) {
               ${illegalArgExceptionToJsError( q"""new $T(..${results.map( r => q"$r.get" )})""" )}
             } else JsError(errors)
           }
-          def writes(obj: $T) = JsObject(Seq[(String,JsValue)](..$jsonFields).filterNot(_._2 == JsNull))
+          def writes(obj: $T) = JsObject(Seq[(String,JsValue)](..$jsonFields)
+            .filterNot(_._2 == JsNull)
+            .map({case (name, value) => ((encoder.encode(name)), value)}))
         }
       }
       """
@@ -436,7 +438,7 @@ This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can onl
     val rootName = Literal( Constant( T.toString ) )
     val subNames = Literal( Constant( subs.map( _.fullName ).mkString( ", " ) ) )
 
-    val t = q"""
+    q"""
       {
         new $pjson.$formatClass[$T]{
           ${verifyKnownDirectSubclassesPostTyper( T: Type, s"formatSealed[$T, $pjson.$formatClass[$T]" )}
@@ -450,8 +452,6 @@ This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can onl
         }
       }
       """
-    //println(c.typecheck(t))
-    t
   }
 
   protected def isCaseClass( tpe: Type ) = tpe.typeSymbol.isClass && tpe.typeSymbol.asClass.isCaseClass
@@ -490,15 +490,38 @@ object SingletonEncoder {
   implicit def simpleNameUpperCase = SingletonEncoder( cls => JsString( camel2underscore( decodeName( cls.getSimpleName ) ).toUpperCase ) )
 }
 
+sealed trait NameEncoder {
+  def encode( str: String ): String
+}
+
+case class BaseNameEncoder() extends NameEncoder {
+  override def encode( str: String ): String = str
+}
+
+case class CamelToSnakeNameEncoder() extends NameEncoder {
+  override def encode( str: String ): String = (
+    str.take( 1 ).toLowerCase
+    ++
+    "[0-9A-Z]".r.replaceAllIn(
+      str.drop( 1 ),
+      "_" + _.group( 0 ).toLowerCase
+    )
+  )
+}
+
+object Encoders {
+  implicit val encoder: NameEncoder = BaseNameEncoder()
+}
+
 object Jsonx {
   /** Generates a PlayJson Format[T] for a case class T with any number of fields (>22 included)
    */
-  def formatCaseClass[T]( implicit ev: CaseClass[T] ): OFormat[T] = macro Macros.formatCaseClass[T]
+  def formatCaseClass[T]( implicit ev: CaseClass[T], encoder: NameEncoder ): OFormat[T] = macro Macros.formatCaseClass[T]
 
   /** Generates a PlayJson Format[T] for a case class T with any number of fields (>22 included)
    *  Uses default values when fields are not found
    */
-  def formatCaseClassUseDefaults[T]( implicit ev: CaseClass[T] ): OFormat[T] = macro Macros.formatCaseClassUseDefaults[T]
+  def formatCaseClassUseDefaults[T]( implicit ev: CaseClass[T], encoder: NameEncoder ): OFormat[T] = macro Macros.formatCaseClassUseDefaults[T]
 
   /** Serialize one member classes such as value classes as their single contained value instead of a wrapping js object.
    */
@@ -543,9 +566,9 @@ object Jsonx {
   /** Fully automatic, recursive formatter generator.
    *  Recognizes overridden formatters from companion objects or implicit scope
    *  Does currently only for for case classes, sealed traits, objects and manually defined formatters.
-   *  Automatically, recursively delegates to formatCaseClass, formatSealed, formatInline, formatSingleton, implicitly[Format[...]]
+   *  Automatically, recursively delegates to formatCaseClass, formatSealed, formatInline, formatSingleton, implicitly[ Format[...] ]
    *  Note: defaults to inline single-value case classes. Override if required.
    *  Currently not supported: classes with type arguments including tuples
    */
-  def formatAuto[T]: Format[T] = macro Macros.formatAuto[T]
+  def formatAuto[T]( implicit encoder: NameEncoder ): Format[T] = macro Macros.formatAuto[T]
 }

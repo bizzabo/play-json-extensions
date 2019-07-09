@@ -7,6 +7,8 @@ import _root_.play.api.libs.json._
 import ai.x.play.json._
 import ai.x.play.json.tuples._
 
+import ai.x.play.json.Encoders._
+
 final case class RecursiveClass( o: Option[RecursiveClass], s: String )
 object RecursiveClass {
   implicit def jsonFormat: Format[RecursiveClass] = Jsonx.formatCaseClass[RecursiveClass] // also checks that Format works as expected type, not just OFormat
@@ -90,6 +92,21 @@ class PlayJsonExtensionsTest extends FunSuite {
     val json = Json.toJson( bar )
     assert( bar === json.as[Bar] )
   }
+  test( "de/serialize with snake case" ) {
+    case class Worker( workerId: Int, fullName: String, workStatus: WorkStatus )
+    case class WorkStatus( currentWorkerStatus: String )
+
+    implicit val encoder: NameEncoder = CamelToSnakeNameEncoder()
+    implicit def fmt1 = Jsonx.formatCaseClass[WorkStatus]
+    implicit def fmt2 = Jsonx.formatCaseClass[Worker]
+
+    val worker1 = Worker( 12, "John Worker", WorkStatus( "chillin'" ) )
+
+    val json = Json.parse( """{"worker_id":12,"full_name":"John Worker","work_status":{"current_worker_status":"chillin'"}}""" )
+
+    assert( worker1 === json.as[Worker] )
+    assert( Json.toJson( worker1 ) === json )
+  }
   case class BarWithDefault( s: String, i: Int = 6 )
   test( "de/serialize case class default value" ) {
     implicit def fmt1 = Jsonx.formatCaseClassUseDefaults[BarWithDefault]
@@ -138,15 +155,15 @@ class PlayJsonExtensionsTest extends FunSuite {
     )
   }
 
-  test("require to JsError for inline format"){
-    case class Bar(a: Int){
-      require(a > 5, "a needs to be larger than 5")
+  test( "require to JsError for inline format" ) {
+    case class Bar( a: Int ) {
+      require( a > 5, "a needs to be larger than 5" )
     }
-    case class Baz(bar: Bar)
+    case class Baz( bar: Bar )
     implicit def fmt1 = Jsonx.formatInline[Bar]
     implicit def fmt2 = Jsonx.formatCaseClass[Baz]
-    assert(Baz(Bar(6)) === Json.parse("""{"bar":6}""").validate[Baz].get)
-    val capturedFailedRequire = Json.parse("""{"bar":5}""").validate[Baz]
+    assert( Baz( Bar( 6 ) ) === Json.parse( """{"bar":6}""" ).validate[Baz].get )
+    val capturedFailedRequire = Json.parse( """{"bar":5}""" ).validate[Baz]
     assert(
       capturedFailedRequire.asInstanceOf[JsError].errors.head._2.head.message contains "requirement failed: a needs to be larger than 5"
     )
