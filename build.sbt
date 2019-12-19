@@ -4,11 +4,11 @@ import com.typesafe.sbt.SbtScalariform.{ScalariformKeys, autoImport}
 val projectName = "play-json-extensions"
 lazy val root = Project(id = projectName, base = file("."))
 
-version := "0.40.1"
+version := "0.41.0"
 organization := "ai.x"
 name := projectName
-scalaVersion := "2.12.8"
-crossScalaVersions := Seq("2.11.12", "2.12.8", "2.13.0")
+scalaVersion := "2.12.10"
+crossScalaVersions := Seq("2.12.10", "2.13.1")
 useGpg := true
 credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credential")
 description := "Additional type classes for the play-json serialization library"
@@ -31,7 +31,7 @@ developers := List(
 )
 
 libraryDependencies ++=   Seq(
-  "com.typesafe.play" %% "play-json" % "2.7.4",
+  "com.typesafe.play" %% "play-json" % "2.8.1",
   "org.scala-lang" % "scala-compiler" % scalaVersion.value % "provided",
   "org.scalatest" %% "scalatest" % "3.0.8" % "test"
 )
