@@ -1,28 +1,32 @@
 Play-Json extensions
 ==========================
 
+### installation
+
+Add this to your `build.sbt`:
+
+```
+libraryDependencies += "ai.x" %% "play-json-extensions" % "0.41.0"
+```
+
 ### latest versions
 
-**For Scala 2.11.x, 2.12.x, and 2.13.x**
-
-play-json 2.7.x: `libraryDependencies += "ai.x" %% "play-json-extensions" % "0.40.2"`
-
-**For 2.11.x only**
-
-play-json 2.5.x: `libraryDependencies += "ai.x" %% "play-json-extensions" % "0.9.0"`
-
-play-json 2.4.x: `libraryDependencies += "org.cvogt" %% "play-json-extensions" % "0.6.1"`
-
-play-json 2.3.x:
-`libraryDependencies += "org.cvogt" %% "play-json-extensions" % "0.2"`
-
-(if you were using formatAdt or InvariantFormat you may want to upgrade to 0.4.0 first and then to 0.6.0)
+| Play-json | Scala            | group id    | latest version       |
+| --------- | ---------------- | ------------| -------------------- |
+| 2.8.x     | 2.12, 2.13       | `ai.x`      | 0.41.0               |
+| 2.7.x     | 2.11, 2.12, 2.13 | `ai.x`      | 0.40.2               |
+| 2.5.x     | 2.11             | `ai.x`      | 0.9.0                |
+| 2.4.x     | 2.11             | `org.cvogt` | 0.6.1                |
+| 2.3.x     | 2.11             | `org.cvogt` | 0.2                  |     
 
 ### all versions and scaladoc
 
-See https://www.javadoc.io/doc/ai.x/play-json-extensions_2.11/
+[0.40 - latest](https://www.javadoc.io/doc/ai.x/play-json-extensions_2.13/)
 
-(for older versions https://www.javadoc.io/doc/org.cvogt/play-json-extensions_2.11/)
+[0.9 - 0.30](https://www.javadoc.io/doc/ai.x/play-json-extensions_2.11/)
+
+[0.1 - 0.8](https://www.javadoc.io/doc/org.cvogt/play-json-extensions_2.11/)
+
 
 ### De-/Serialize case classes of arbitrary size (23+ fields allowed)
 
