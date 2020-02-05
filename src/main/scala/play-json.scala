@@ -282,7 +282,7 @@ private[json] class Macros( val c: blackbox.Context ) {
     val defaults = caseClassFieldsDefaults( T )
     def orDefault( t: Tree, name: String ) = {
       val default = defaults.get( name ).flatten
-      default.filter( _ => useDefaults ).map( d => q"$t orElse JsSuccess($d)" ).getOrElse( t )
+      default.filter( _ => useDefaults ).map( d => q"$t orElse $pjson.JsSuccess($d)" ).getOrElse( t )
     }
     val ( results, mkResults ) = caseClassFieldsTypes( T ).map {
       case ( k, t ) =>
