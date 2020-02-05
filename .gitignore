@@ -2,3 +2,4 @@
 .ensime_cache
 target
 .metals/
+.idea/
