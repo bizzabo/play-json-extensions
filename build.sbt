@@ -4,7 +4,7 @@ import com.typesafe.sbt.SbtScalariform.{ScalariformKeys, autoImport}
 val projectName = "play-json-extensions"
 lazy val root = Project(id = projectName, base = file("."))
 
-version := "0.41.0"
+version := "0.42.0"
 organization := "ai.x"
 name := projectName
 scalaVersion := "2.12.10"
@@ -81,3 +81,4 @@ scalariformPreferences := scalariformPreferences.value
       .setPreference(SpacesAroundMultiImports, true)
       .setPreference(DanglingCloseParenthesis, Preserve)
 .setPreference(DoubleIndentConstructorArguments, true)
+

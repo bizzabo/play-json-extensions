@@ -6,14 +6,14 @@ Play-Json extensions
 Add this to your `build.sbt`:
 
 ```
-libraryDependencies += "ai.x" %% "play-json-extensions" % "0.41.0"
+libraryDependencies += "ai.x" %% "play-json-extensions" % "0.42.0"
 ```
 
 ### latest versions
 
 | Play-json | Scala            | group id    | latest version       |
 | --------- | ---------------- | ------------| -------------------- |
-| 2.8.x     | 2.12, 2.13       | `ai.x`      | 0.41.0               |
+| 2.8.x     | 2.12, 2.13       | `ai.x`      | 0.42.0               |
 | 2.7.x     | 2.11, 2.12, 2.13 | `ai.x`      | 0.40.2               |
 | 2.5.x     | 2.11             | `ai.x`      | 0.9.0                |
 | 2.4.x     | 2.11             | `org.cvogt` | 0.6.1                |
