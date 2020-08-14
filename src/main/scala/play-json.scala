@@ -476,14 +476,7 @@ object implicits {
 final case class SingletonEncoder( apply: java.lang.Class[_] => JsValue )
 object SingletonEncoder {
   import scala.reflect.NameTransformer
-  def camel2underscore( str: String ) = (
-    str.take( 1 )
-    ++
-    "[0-9A-Z]".r.replaceAllIn(
-      str.drop( 1 ),
-      "_" + _.group( 0 ).toLowerCase
-    )
-  )
+  def camel2underscore( str: String ): String = JsonNaming.SnakeCase( str )
   def decodeName( name: String ) = NameTransformer.decode( name.dropRight( 1 ) )
   implicit def simpleName = SingletonEncoder( cls => JsString( decodeName( cls.getSimpleName ) ) )
   implicit def simpleNameLowerCase = SingletonEncoder( cls => JsString( camel2underscore( decodeName( cls.getSimpleName ) ) ) )
@@ -499,14 +492,7 @@ case class BaseNameEncoder() extends NameEncoder {
 }
 
 case class CamelToSnakeNameEncoder() extends NameEncoder {
-  override def encode( str: String ): String = (
-    str.take( 1 ).toLowerCase
-    ++
-    "[0-9A-Z]".r.replaceAllIn(
-      str.drop( 1 ),
-      "_" + _.group( 0 ).toLowerCase
-    )
-  )
+  override def encode( str: String ): String = JsonNaming.SnakeCase( str )
 }
 
 object Encoders {
