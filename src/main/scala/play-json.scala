@@ -300,7 +300,10 @@ private[json] class Macros( val c: blackbox.Context ) {
             val result = if(bpath.isInstanceOf[$pjson.JsDefined]) $result else ${orDefault( result, k )}
             (resolved,result) match {
               case (_,result:$pjson.JsSuccess[_]) => result
-              case _ => resolved.flatMap(_ => result)
+              case _ => resolved.flatMap { unused =>
+                val _ = unused
+                result
+              }
             }
           }
           """ )
