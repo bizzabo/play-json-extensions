@@ -7,8 +7,8 @@ lazy val root = Project(id = projectName, base = file("."))
 version := "0.42.0"
 organization := "ai.x"
 name := projectName
-scalaVersion := "2.12.10"
-crossScalaVersions := Seq("2.12.10", "2.13.1")
+scalaVersion := "2.12.17"
+crossScalaVersions := Seq("2.12.17", "2.13.10")
 useGpg := true
 credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credential")
 description := "Additional type classes for the play-json serialization library"
@@ -31,9 +31,9 @@ developers := List(
 )
 
 libraryDependencies ++=   Seq(
-  "com.typesafe.play" %% "play-json" % "2.8.1",
+  "com.typesafe.play" %% "play-json" % "2.9.3",
   "org.scala-lang" % "scala-compiler" % scalaVersion.value % "provided",
-  "org.scalatest" %% "scalatest" % "3.0.8" % "test"
+  "org.scalatest" %% "scalatest" % "3.2.14" % "test"
 )
 
 resolvers ++= Seq(
