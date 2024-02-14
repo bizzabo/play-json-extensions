@@ -457,6 +457,28 @@ This can be caused by https://issues.scala-lang.org/browse/SI-7046 which can onl
   protected def isCaseClass( tpe: Type ) = tpe.typeSymbol.isClass && tpe.typeSymbol.asClass.isCaseClass
 
   protected def isModuleClass( tpe: Type ) = tpe.typeSymbol.isClass && tpe.typeSymbol.asClass.isModuleClass
+
+  def readsCaseClass[T: c.WeakTypeTag]: Tree =
+    q"""
+      {
+        import $pjson.Writes
+        import $pkg.Jsonx
+        implicit def dummyWritesThatWillNeverBeUsed[T]: Writes[T] = 
+          (_: T) => throw new NotImplementedError()
+        Jsonx.formatCaseClass[${weakTypeOf[T]}]: Reads[${weakTypeOf[T]}]
+      }
+      """
+
+  def writesCaseClass[T: c.WeakTypeTag]: Tree =
+    q"""
+      {
+        import $pjson.{ Reads, JsValue }
+        import $pkg.Jsonx
+        implicit def dummyReadsThatWillNeverBeUsed[T]: Reads[T] = 
+          (_: JsValue) => throw new NotImplementedError()
+        Jsonx.formatCaseClass[${weakTypeOf[T]}]: Writes[${weakTypeOf[T]}]
+      }
+      """
 }
 
 object implicits {
@@ -571,4 +593,8 @@ object Jsonx {
    *  Currently not supported: classes with type arguments including tuples
    */
   def formatAuto[T]( implicit encoder: NameEncoder ): Format[T] = macro Macros.formatAuto[T]
+
+  def readsCaseClass[T]: Reads[T] = macro Macros.readsCaseClass[T]
+
+  def writesCaseClass[T]: Writes[T] = macro Macros.writesCaseClass[T]
 }
